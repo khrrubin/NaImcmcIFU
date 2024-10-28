@@ -16,9 +16,10 @@ from IPython import embed
 
 def setup_script(galname, bin_key, beta_corr, binsperrun):
     # mangadap_muse root directory path
-    mangadap_muse_dir = os.path.dirname(os.path.dirname(defaults.dap_data_root()))
+    #mangadap_muse_dir = os.path.dirname(os.path.dirname(defaults.dap_data_root()))
+    mangadap_muse_dir = "/data2/muse/"
     # main cube directory path
-    main_cube_dir = os.path.join(mangadap_muse_dir, 'MUSE_cubes')
+    main_cube_dir = os.path.join(mangadap_muse_dir, 'muse_cubes')
     # MUSE Line Spread Function file path
     LSF_fil = os.path.join(main_cube_dir, 'LSF-Config_MUSE_WFM')
     if not os.path.isfile(LSF_fil):
@@ -43,7 +44,7 @@ def setup_script(galname, bin_key, beta_corr, binsperrun):
     ifu = cfg.getint('ifu', default=None)
 
     # output directory path
-    output_root_dir = os.path.join(mangadap_muse_dir, 'outputs')
+    output_root_dir = os.path.join(mangadap_muse_dir, 'dap_outputs')
     output_gal_dir = os.path.join(output_root_dir, f"{galname}-{bin_key}")
     if not os.path.isdir(output_gal_dir):
         raise ValueError(f'{output_gal_dir} is not a directory within {output_root_dir}.')
@@ -117,6 +118,18 @@ def setup_script(galname, bin_key, beta_corr, binsperrun):
     # Number of separate "runs"
     nruns = int(nbins / binsperrun)
 
+    if nruns > 20:
+        ask = None
+        while ask is None:
+            print(f"WARNING: Argument {binsperrun} creates {nruns} mcmc instances which exceeds recommended amount of 20.")
+            ask = input("Would you like to change to 20 instances? [Y/N]\n")
+            if ask.lower() == 'y':
+                nruns=20
+            else:
+                print("Invalid Response.")
+                ask = None
+        
+
     for nn in range(nruns + 1):
 
         startbinid = nn * binsperrun
@@ -139,9 +152,11 @@ def setup_script(galname, bin_key, beta_corr, binsperrun):
 def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid, endbinid):
     start_time1 = time.time()
     # mangadap_muse root directory path
-    mangadap_muse_dir = os.path.dirname(os.path.dirname(defaults.dap_data_root()))
+    #mangadap_muse_dir = os.path.dirname(os.path.dirname(defaults.dap_data_root()))
+    mangadap_muse_dir = "/data2/muse"
+    
     # main cube directory path
-    main_cube_dir = os.path.join(mangadap_muse_dir, 'MUSE_cubes')
+    main_cube_dir = os.path.join(mangadap_muse_dir, 'muse_cubes')
 
     # cube directory path
     cube_dir = os.path.join(main_cube_dir, galname)
@@ -162,7 +177,7 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
     ifu = cfg.getint('ifu', default=None)
 
     # output directory path
-    output_root_dir = os.path.join(mangadap_muse_dir, 'outputs')
+    output_root_dir = os.path.join(mangadap_muse_dir, 'dap_outputs')
     output_gal_dir = os.path.join(output_root_dir, f"{galname}-{bin_key}")
     if not os.path.isdir(output_gal_dir):
         raise ValueError(f'{output_gal_dir} is not a directory within {output_root_dir}.')
@@ -188,7 +203,8 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
                                   f"manga-{plate}-{ifu}-MAPS-{bin_key}-{analysisplan_methods}.fits")
 
     # main output directory where the MCMC runs will be placed in
-    NaImcmc_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NaI_MCMC_output')
+    #NaImcmc_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NaI_MCMC_output')
+    NaImcmc_dir = "/data2/muse/mcmc_outputs/"
     if not os.path.isdir(NaImcmc_dir):
         os.makedirs(NaImcmc_dir)
 
