@@ -13,6 +13,7 @@ import time
 from mangadap.config import defaults
 from mangadap.util.parser import DefaultConfig
 from IPython import embed
+from datetime import datetime
 
 def setup_script(galname, bin_key, beta_corr, binsperrun):
     # mangadap_muse root directory path
@@ -60,7 +61,8 @@ def setup_script(galname, bin_key, beta_corr, binsperrun):
         output_gal_sub_dir = os.path.join(output_gal_dir, beta_dirname)
 
     # key methdos from analysis plan
-    analysisplan_methods = 'MILESHC-MASTARHC2-NOISM'
+    #analysisplan_methods = 'MILESHC-MASTARHC2-NOISM'
+    analysisplan_methods = 'MILESHC-MASTARSSP-NOISM'
     # cube directory
     output_cube_dir = os.path.join(output_gal_sub_dir, f"{bin_key}-{analysisplan_methods}", str(plate), str(ifu))
     # paths to the LOGCUBE and MAPS files
@@ -192,7 +194,7 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         output_gal_sub_dir = os.path.join(output_gal_dir, beta_dirname)
 
     # key methdos from analysis plan
-    analysisplan_methods = 'MILESHC-MASTARHC2-NOISM'
+    analysisplan_methods = 'MILESHC-MASTARSSP-NOISM'
     # cube directory
     output_cube_dir = os.path.join(output_gal_sub_dir, f"{bin_key}-{analysisplan_methods}", str(plate), str(ifu))
     # paths to the LOGCUBE and MAPS files
@@ -209,9 +211,15 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         os.makedirs(NaImcmc_dir)
 
     # output mcmc galaxy directory
-    mcmc_gal_dir = os.path.join(NaImcmc_dir,f'{galname}-{bin_key}', beta_dirname)
+    mcmc_gal_dir = os.path.join(NaImcmc_dir, f'{galname}-{bin_key}', beta_dirname, f'{bin_key}-{analysisplan_methods}')
     if not os.path.isdir(mcmc_gal_dir):
         os.makedirs(mcmc_gal_dir)
+
+    run_num = len(os.listdir(mcmc_gal_dir))
+    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    mcmc_save_dir = os.path.join(mcmc_gal_dir,f'Run_{run_num}-{timestamp}')
+        
+
 
     outfits_file_name = f'{galname}-{bin_key}-binid-{startbinid}-{endbinid}-samples-run-{binid_run}.fits'
 
@@ -318,7 +326,7 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
 
     t = Table([sv_binnumber, sv_samples, sv_percentiles, sv_velocities],
               names=('bin', 'samples', 'percentiles', 'velocities'))
-    fits.writeto(os.path.join(mcmc_gal_dir, outfits_file_name), np.array(t), overwrite=True)
+    fits.writeto(os.path.join(mcmc_save_dir, outfits_file_name), np.array(t), overwrite=True)
     end_time1 = time.time()
     print('Total time elapsed {:.2f} hours'.format((end_time1 - start_time1) / 3600))
 
