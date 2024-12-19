@@ -127,6 +127,8 @@ def setup_script(galname, bin_key, beta_corr, binsperrun):
             ask = input("Would you like to change to 20 instances? [Y/N]\n")
             if ask.lower() == 'y':
                 nruns=20
+            elif ask.lower() == 'n':
+                print(f"Continuing with {nruns} runs")
             else:
                 print("Invalid Response.")
                 ask = None
