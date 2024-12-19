@@ -71,7 +71,7 @@ def setup_script(galname, bin_key, beta_corr, binsperrun):
 
     # directory where the MCMC script will placed in
     script_dir = os.path.dirname(os.path.abspath(__file__))
-    outfil = f'{script_dir}/{galname}-{bin_key}-{beta_dirname}-script'
+    outfil = f'{script_dir}/mcmc_scripts/{galname}-{bin_key}-{beta_dirname}-script'
 
     # For continuum-normalization around NaI
     # wavelength fitting range inside of NaI region
