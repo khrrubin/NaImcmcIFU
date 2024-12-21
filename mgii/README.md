@@ -76,7 +76,7 @@ These values can be adjusted directly in `model_fitter.modeling.__init__`. The m
 
 #### 2.2 FWHM
 
-The Mg II model requires the input of the spectrograph's line spread function (LSF) value in pixels at the observed wavelength of the Mg II doublet (as the parameter `fwhm` in `model_MgII.model_MgII()`). Our model code generates the flux at a resolution of $0.1 \mathrm{\AA\ pix^{-1}}$ before smoothing the model spectrum by a Gaussian kernel of full width half max equal to LSF pixel resolution, and rebinning to the size of the observed wavelength array.
+The Mg II model requires the input of the spectrograph's line spread function (LSF) value in pixels at the observed wavelength of the Mg II doublet (as the parameter `fwhm` in `model_MgII.model_MgII()`). Our model code generates the flux at a resolution of $0.1 \mathrm{Å\ pix^{-1}}$ before smoothing the model spectrum by a Gaussian kernel of full width half max equal to LSF pixel resolution, and rebinning to the size of the observed wavelength array.
 
 When calling the `modeling` class, `fwhm` is set up as an optional argument where, if `None`, it will automatically compute the FWHM using from the MUSE LSF configuration in `/example_data/`. **To correctly analyze your spectra, please calculate and input your own `fwhm`**.
 
@@ -104,7 +104,7 @@ where $z$ is the redshift of the galaxy.
 
 I then found the $\mathrm{LSF_{FWHM}}$ of the closest matching observed wavelength to $\lambda_{exp,\ \mathrm{Mg II}}$ from the LSF configuration mentioned above to get the LSF in Angstroms at Mg II $(\mathrm{LSF_{FWHM,\ Mg\ II}})$.
 
-To calculate the pixel scale at Mg II $(\mathrm{pixel\ scale|_{Mg\ II}})$, I took the array of observed wavelength, and computed the median difference in wavelength between each pixel in a $10\ \mathrm{\AA}$ region, centered on $\lambda_{exp,\ \mathrm{Mg II}}$. That is,
+To calculate the pixel scale at Mg II $(\mathrm{pixel\ scale|_{Mg\ II}})$, I took the array of observed wavelength, and computed the median difference in wavelength between each pixel in a $10\ \mathrm{Å}$ region, centered on $\lambda_{exp,\ \mathrm{Mg II}}$. That is,
 
 $$
 \mathrm{pixel\ scale|_{Mg\ II}} = \mathrm{med}\left[\Delta \lambda(\lambda \in [\lambda_l, \lambda_r]) \right]
