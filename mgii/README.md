@@ -50,8 +50,8 @@ Once you are on the correct branch, you should now be able to cd into the `mgii`
 ```
 $ cd mgii
 $ ls
-README.md			    example_data			    lnlikelihood.py			model_MgII.py
-example_usage.ipynb		mcmc_analysis_template.py	model_fitter.py
+README.md			          example_data			            lnlikelihood.py     model_MgII.py
+example_usage.ipynb     mcmc_analysis_template.py     model_fitter.py
 ```
 
 This contains *almost* all of the code necessary to model your own Mg II absorption profile(s). However, due to the nature of variance in data storage and user preferences of data structure, there is no 'universal' function provided handle a given spectrum.
