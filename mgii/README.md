@@ -104,10 +104,10 @@ where $z$ is the redshift of the galaxy.
 
 I then found the $\mathrm{LSF_{FWHM}}$ of the closest matching observed wavelength to $\lambda_{exp,\ \mathrm{Mg II}}$ from the LSF configuration mentioned above to get the LSF in Angstroms at Mg II $(\mathrm{LSF_{FWHM,\ Mg\ II}})$.
 
-To calculate the pixel scale at Mg II $(\mathrm{pixel\ scale|_{Mg\ II}})$, I took the array of observed wavelength, and computed the median difference in wavelength between each pixel in a $10\ \mathrm{Å}$ region, centered on $\lambda_{exp,\ \mathrm{Mg II}}$. That is,
+To calculate the pixel scale at Mg II $(\mathrm{pixel\ scale\vert_{Mg\ II}})$, I took the array of observed wavelength, and computed the median difference in wavelength between each pixel in a $10\ \mathrm{Å}$ region, centered on $\lambda_{exp,\ \mathrm{Mg II}}$. That is,
 
 $$
-\mathrm{pixel\ scale|_{Mg\ II}} = \mathrm{med}\left[\Delta \lambda(\lambda \in [\lambda_l, \lambda_r]) \right]
+\mathrm{pixel\ scale\vert_{Mg\ II}} = \mathrm{med}\left[\Delta \lambda(\lambda \in [\lambda_l, \lambda_r]) \right]
 $$
 
 where $\lambda_l \approx \lambda_{exp,\ \mathrm{Mg II}} - 5$ and $\lambda_r \approx \lambda_{exp,\ \mathrm{Mg II}} + 5$.
@@ -115,7 +115,7 @@ where $\lambda_l \approx \lambda_{exp,\ \mathrm{Mg II}} - 5$ and $\lambda_r \app
 Finally, I calculated $R_{pix}$ as
 
 $$
-\boxed{R_{pix} = \frac{\mathrm{LSF_{FWHM}}(\lambda \approx \lambda_{exp,\ \mathrm{Mg II}})}{\mathrm{pixel\ scale|_{Mg\ II}}}}
+\boxed{R_{pix} = \frac{\mathrm{LSF_{FWHM}}(\lambda \approx \lambda_{exp,\ \mathrm{Mg II}})}{\mathrm{pixel\ scale\vert_{Mg\ II}}}}
 $$
 
 This is implemented in the function `model_MgII.get_fwhm_MUSE_UDF`.
