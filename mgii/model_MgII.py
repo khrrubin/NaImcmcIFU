@@ -191,7 +191,7 @@ def get_fwhm_MUSE_UDF(wavelength, redshift):
         The FWHM in pixels at the corresponding observed wavelength of the MgII doublet (2803 line)
     """
     # MUSE udf10 line spread function (LSF) in Angstrom from Bacon et al. 2017 Eq 8
-    specres = np.genfromtxt('LSF-Config_MUSE_WFM', names=('wave', 'fwhm'), comments='#')
+    specres = np.genfromtxt('example_data/LSF-Config_MUSE_WFM', names=('wave', 'fwhm'), comments='#')
 
     # Get the `expected` observed wavelength position of MgII
     transinfo = transitions() # grab MgII info
