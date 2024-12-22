@@ -213,7 +213,7 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         os.makedirs(NaImcmc_dir)
 
     # output mcmc galaxy directory
-    mcmc_gal_dir = os.path.join(NaImcmc_dir, f'{galname}-{bin_key}', beta_dirname, f'{bin_key}-{analysisplan_methods}')
+    mcmc_gal_dir = os.path.join(NaImcmc_dir, f'{galname}-{bin_key}', beta_dirname, analysisplan_methods)
     if not os.path.isdir(mcmc_gal_dir):
         os.makedirs(mcmc_gal_dir)
 
