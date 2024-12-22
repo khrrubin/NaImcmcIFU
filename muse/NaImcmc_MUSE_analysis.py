@@ -220,8 +220,8 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
     run_num = len(os.listdir(mcmc_gal_dir))
     timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     mcmc_save_dir = os.path.join(mcmc_gal_dir,f'Run_{run_num}-{timestamp}')
-        
-
+    if not os.path.exists(mcmc_save_dir):
+        os.mkdir(mcmc_save_dir)
 
     outfits_file_name = f'{galname}-{bin_key}-binid-{startbinid}-{endbinid}-samples-run-{binid_run}.fits'
 
