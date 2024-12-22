@@ -129,7 +129,7 @@ def setup_script(galname, bin_key, beta_corr):
     startbinid = 0
     endbinid = nbins
 
-    jobname = 'NaImcmc' + '_bin_' + str(startbinid) + '_' + str(endbinid) + '_run' + str(nn)
+    jobname = 'NaImcmc' + '_bin_' + str(startbinid) + '_' + str(endbinid) + '_run'
 
     f.write('screen -mdLS ' + jobname + ' -Logfile' + ' ' + testlog_fname + ' sh -c "python NaImcmc_MUSE_analysis_testing_copy.py 1 ' +
             galname + ' ' + bin_key + ' ' + str(beta_corr) + ' ' +
