@@ -133,7 +133,7 @@ def setup_script(galname, bin_key, beta_corr):
 
     f.write('screen -mdLS ' + jobname + ' -Logfile' + ' ' + testlog_fname + ' sh -c "python NaImcmc_MUSE_analysis_testing_copy.py 1 ' +
             galname + ' ' + bin_key + ' ' + str(beta_corr) + ' ' +
-            redshift_str + ' ' + LSFvel_str + ' ' + 0 + ' ' +
+            redshift_str + ' ' + LSFvel_str + ' ' + str(0) + ' ' +
             str(startbinid) + ' ' + str(endbinid))
 
     f.close()
