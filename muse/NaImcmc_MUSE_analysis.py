@@ -217,9 +217,8 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
     if not os.path.isdir(mcmc_gal_dir):
         os.makedirs(mcmc_gal_dir)
 
-    run_num = len(os.listdir(mcmc_gal_dir))
-    timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    mcmc_save_dir = os.path.join(mcmc_gal_dir,f'Run_{run_num}-{timestamp}')
+    timestamp = datetime.now().strftime('%Y-%m-%d')
+    mcmc_save_dir = os.path.join(mcmc_gal_dir,f'Run_{timestamp}')
     if not os.path.exists(mcmc_save_dir):
         os.mkdir(mcmc_save_dir)
 
