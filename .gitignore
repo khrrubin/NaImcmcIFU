@@ -5,3 +5,5 @@
 /muse/mcmc_scripts/*script*
 
 .ipynb_checkpoints
+
+*.log
