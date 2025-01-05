@@ -128,7 +128,7 @@ def setup_script(galname, bin_key, beta_corr, binsperrun):
             if ask.lower() == 'y':
                 continue
             elif ask.lower() == 'n':
-                raise TypeError(f"User Interrupt")
+                raise TypeError(f"User Cancel")
             else:
                 print("Invalid Response.")
                 ask = None
