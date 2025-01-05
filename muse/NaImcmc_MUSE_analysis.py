@@ -120,15 +120,15 @@ def setup_script(galname, bin_key, beta_corr, binsperrun):
     # Number of separate "runs"
     nruns = int(nbins / binsperrun)
 
-    if nruns > 20:
+    if nruns > 40:
         ask = None
         while ask is None:
             print(f"WARNING: Argument {binsperrun} creates {nruns} mcmc instances which exceeds recommended amount of 20.")
-            ask = input("Would you like to change to 20 instances? [Y/N]\n")
+            ask = input("Continue? [Y/N]\n")
             if ask.lower() == 'y':
-                nruns=20
+                continue
             elif ask.lower() == 'n':
-                print(f"Continuing with {nruns} runs")
+                raise TypeError(f"User Interrupt")
             else:
                 print("Invalid Response.")
                 ask = None
