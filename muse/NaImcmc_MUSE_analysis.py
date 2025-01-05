@@ -70,8 +70,21 @@ def setup_script(galname, bin_key, beta_corr, binsperrun):
                                   f"manga-{plate}-{ifu}-LOGCUBE-{bin_key}-{analysisplan_methods}.fits")
 
     # directory where the MCMC script will placed in
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    outfil = f'{script_dir}/mcmc_scripts/{galname}-{bin_key}-{beta_dirname}-script'
+    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    script_dir = os.path.join(repo_dir, 'mcmc_scripts')
+    if not os.path.exists(script_dir):
+        os.mkdir(script_dir)
+
+    log_dir = os.path.join(repo_dir, 'script_logs')
+    if not os.path.exists(log_dir):
+        os.mkdir(log_dir)
+    
+    gal_log_dir = os.path.join(log_dir, f"{galname}-{bin_key}")
+    if not os.path.exists(gal_log_dir):
+        os.mkdir(gal_log_dir)
+    
+    outfil = f'{script_dir}/{galname}-{bin_key}-{beta_dirname}-script'
+
 
     # For continuum-normalization around NaI
     # wavelength fitting range inside of NaI region
@@ -143,11 +156,15 @@ def setup_script(galname, bin_key, beta_corr, binsperrun):
             endbinid = nbins
 
         jobname = 'NaImcmc' + '_bin_' + str(startbinid) + '_' + str(endbinid) + '_run' + str(nn)
-
+        
         f.write('screen -mdS ' + jobname + ' sh -c "python NaImcmc_MUSE_analysis.py 1 ' +
                 galname + ' ' + bin_key + ' ' + str(beta_corr) + ' ' +
                 redshift_str + ' ' + LSFvel_str + ' ' + str(nn) + ' ' +
-                str(startbinid) + ' ' + str(endbinid) + '"\n')
+                str(startbinid) + ' ' + str(endbinid) + '>' + ' ' + 
+                f"{gal_log_dir}/NaImcmc_bin_{str(startbinid)}_{str(endbinid)}_run_{str(nn)}.log" + 
+                '2>&1' + '"\n')
+        
+
 
     f.close()
     # Set up script that lists
