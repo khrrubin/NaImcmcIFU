@@ -179,7 +179,7 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, screen):
                     redshift_str + ' ' + LSFvel_str + ' ' + str(nn) + ' ' +
                     str(startbinid) + ' ' + str(endbinid) + '>' + ' ' + 
                     f"{gal_log_dir}/NaImcmc_bin_{str(startbinid)}_{str(endbinid)}_run_{str(nn)}.log" + 
-                    '2>&1' + '\n')
+                    ' 2>&1' + '\n')
 
 
     f.close()
