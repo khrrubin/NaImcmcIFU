@@ -177,7 +177,7 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, screen):
             f.write('nohup python NaImcmc_MUSE_analysis.py 1 ' +
                     galname + ' ' + bin_key + ' ' + str(beta_corr) + ' ' +
                     redshift_str + ' ' + LSFvel_str + ' ' + str(nn) + ' ' +
-                    str(startbinid) + ' ' + str(endbinid) + '>' + ' ' + 
+                    str(startbinid) + ' ' + str(endbinid) + ' >' + ' ' + 
                     f"{gal_log_dir}/NaImcmc_bin_{str(startbinid)}_{str(endbinid)}_run_{str(nn)}.log" + 
                     ' 2>&1' + '\n')
 
