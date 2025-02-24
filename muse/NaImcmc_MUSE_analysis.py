@@ -16,10 +16,18 @@ from IPython import embed
 from datetime import datetime
 import json
 
-def setup_script(galname, bin_key, beta_corr, binsperrun):
+def setup_script(galname, bin_key, beta_corr, binsperrun, screen):
     # mangadap_muse root directory path
-
-    data_root_dir = "/data2/muse/"
+    # mangadap_muse root directory path
+    with open('config.json') as path_config_file:
+        path_config = json.load(path_config_file)
+    
+    data_root_dir = path_config["data_path"]
+    if not os.path.exists(data_root_dir):
+        raise ValueError(f"""Path-to-data does not exist. Please setup the data_path configuration in {path_config_file}
+                         data_path should specify the absolute path to the location of the subdirectories containing
+                         the muse_cubes, dap_outputs, and mcmc_outputs.
+                         """)
     # main cube directory path
     main_cube_dir = os.path.join(data_root_dir, 'muse_cubes')
     # MUSE Line Spread Function file path
@@ -158,13 +166,20 @@ def setup_script(galname, bin_key, beta_corr, binsperrun):
 
         jobname = 'NaImcmc' + '_bin_' + str(startbinid) + '_' + str(endbinid) + '_run' + str(nn)
         
-        f.write('screen -mdS ' + jobname + ' sh -c "python NaImcmc_MUSE_analysis.py 1 ' +
-                galname + ' ' + bin_key + ' ' + str(beta_corr) + ' ' +
-                redshift_str + ' ' + LSFvel_str + ' ' + str(nn) + ' ' +
-                str(startbinid) + ' ' + str(endbinid) + '>' + ' ' + 
-                f"{gal_log_dir}/NaImcmc_bin_{str(startbinid)}_{str(endbinid)}_run_{str(nn)}.log" + 
-                '2>&1' + '"\n')
-        
+        if screen:
+            f.write('screen -mdS ' + jobname + ' sh -c "python NaImcmc_MUSE_analysis.py 1 ' +
+                    galname + ' ' + bin_key + ' ' + str(beta_corr) + ' ' +
+                    redshift_str + ' ' + LSFvel_str + ' ' + str(nn) + ' ' +
+                    str(startbinid) + ' ' + str(endbinid) + '>' + ' ' + 
+                    f"{gal_log_dir}/NaImcmc_bin_{str(startbinid)}_{str(endbinid)}_run_{str(nn)}.log" + 
+                    '2>&1' + '"\n')
+        else:
+            f.write('nohup python NaImcmc_MUSE_analysis.py 1 ' +
+                    galname + ' ' + bin_key + ' ' + str(beta_corr) + ' ' +
+                    redshift_str + ' ' + LSFvel_str + ' ' + str(nn) + ' ' +
+                    str(startbinid) + ' ' + str(endbinid) + '>' + ' ' + 
+                    f"{gal_log_dir}/NaImcmc_bin_{str(startbinid)}_{str(endbinid)}_run_{str(nn)}.log" + 
+                    '2>&1' + '\n')
 
 
     f.close()
@@ -232,7 +247,7 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
 
     # main output directory where the MCMC runs will be placed in
     #NaImcmc_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NaI_MCMC_output')
-    NaImcmc_dir = "/data2/muse/mcmc_outputs/"
+    NaImcmc_dir = os.path.join(data_root_dir, "mcmc_outputs/")
     if not os.path.isdir(NaImcmc_dir):
         os.makedirs(NaImcmc_dir)
 
@@ -373,7 +388,19 @@ def main():
             raise ValueError('correlation correction flag must be either True or False')
         # number of bins per run
         binsperrun = int(sys.argv[5])
-        setup_script(gal, bin_key, beta_corr, binsperrun)
+
+        try:
+            if sys.argv[6] == 'True':
+                screen = True
+            elif sys.argv[6] == 'False':
+                screen = False
+            else:
+                print(f"Input argument '{sys.argv[6]}' invalid. Setting up script with nohup")
+        except:
+            screen = False
+            print(f"Screen not specified. Setting up script with nohup")
+
+        setup_script(gal, bin_key, beta_corr, binsperrun, screen=screen)
 
     if (flg == 1):
         # pdb.set_trace()
