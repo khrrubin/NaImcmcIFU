@@ -1,3 +1,5 @@
 {
-    "data_path" : "/path/to/your/data"
+    "inrainbows": "/data2/muse/",
+    "virgo": "/virgo2/apitts4030/",
+    "milkyway": "/antares/apitts4030/"
 }
