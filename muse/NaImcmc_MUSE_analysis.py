@@ -16,18 +16,29 @@ from IPython import embed
 from datetime import datetime
 import json
 
-def setup_script(galname, bin_key, beta_corr, binsperrun, screen):
-    # mangadap_muse root directory path
-    # mangadap_muse root directory path
-    with open('config.json') as path_config_file:
-        path_config = json.load(path_config_file)
+def get_data_path():
+    config_filepath = 'config.json'
+    with open(config_filepath) as config_file:
+        config = json.load(config_file)
     
-    data_root_dir = path_config["data_path"]
-    if not os.path.exists(data_root_dir):
-        raise ValueError(f"""Path-to-data does not exist. Please setup the data_path configuration in {path_config_file}
-                         data_path should specify the absolute path to the location of the subdirectories containing
-                         the muse_cubes, dap_outputs, and mcmc_outputs.
-                         """)
+    for key in config.keys():
+        data_path = config[key]
+
+        if os.path.exists(data_path):
+            return data_path
+        else:
+            continue
+
+    raise ValueError(f"""Path-to-data does not exist. Please setup the data_path configuration in {config_filepath}
+                            data_path should specify the absolute path to the location of the subdirectories containing
+                            the muse_cubes, dap_outputs, and mcmc_outputs.
+                            """)
+
+
+def setup_script(galname, bin_key, beta_corr, binsperrun, screen):
+    # data root directory path
+    data_root_dir = get_data_path()
+
     # main cube directory path
     main_cube_dir = os.path.join(data_root_dir, 'muse_cubes')
     # MUSE Line Spread Function file path
@@ -188,16 +199,10 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, screen):
 
 def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid, endbinid):
     start_time1 = time.time()
-    # mangadap_muse root directory path
-    with open('config.json') as path_config_file:
-        path_config = json.load(path_config_file)
 
-    data_root_dir = path_config["data_path"]
-    if not os.path.exists(data_root_dir):
-        raise ValueError(f"""Path-to-data does not exist. Please setup the data_path configuration in {path_config_file}
-                         data_path should specify the absolute path to the location of the subdirectories containing
-                         the muse_cubes, dap_outputs, and mcmc_outputs.
-                         """)
+    # data root directory
+    data_root_dir = get_data_path()
+
     # main cube directory path
     main_cube_dir = os.path.join(data_root_dir, 'muse_cubes')
 
