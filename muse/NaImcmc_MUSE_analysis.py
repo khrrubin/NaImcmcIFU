@@ -105,6 +105,14 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, screen):
     
     outfil = f'{script_dir}/{galname}-{bin_key}-{beta_dirname}-script'
 
+    # directories for the outputs of run_mcmc
+    NaImcmc_dir = os.path.join(data_root_dir, "mcmc_outputs/")
+    os.makedirs(NaImcmc_dir, exist_ok=True)
+
+    # output mcmc galaxy directory
+    mcmc_gal_dir = os.path.join(NaImcmc_dir, f'{galname}-{bin_key}', beta_dirname, analysisplan_methods)
+    os.makedirs(mcmc_gal_dir, exist_ok=True)
+
 
     # For continuum-normalization around NaI
     # wavelength fitting range inside of NaI region
@@ -253,18 +261,16 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
     # main output directory where the MCMC runs will be placed in
     #NaImcmc_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NaI_MCMC_output')
     NaImcmc_dir = os.path.join(data_root_dir, "mcmc_outputs/")
-    if not os.path.isdir(NaImcmc_dir):
-        os.makedirs(NaImcmc_dir)
+    os.makedirs(NaImcmc_dir, exist_ok=True)
 
     # output mcmc galaxy directory
     mcmc_gal_dir = os.path.join(NaImcmc_dir, f'{galname}-{bin_key}', beta_dirname, analysisplan_methods)
-    if not os.path.isdir(mcmc_gal_dir):
-        os.makedirs(mcmc_gal_dir)
+    os.makedirs(mcmc_gal_dir, exist_ok=True)
 
     timestamp = datetime.now().strftime('%Y-%m-%d')
+
     mcmc_save_dir = os.path.join(mcmc_gal_dir,f'Run_{timestamp}')
-    if not os.path.exists(mcmc_save_dir):
-        os.mkdir(mcmc_save_dir)
+    os.makedirs(mcmc_save_dir, exist_ok=True)
 
     outfits_file_name = f'{galname}-{bin_key}-binid-{startbinid}-{endbinid}-samples-run-{binid_run}.fits'
 
