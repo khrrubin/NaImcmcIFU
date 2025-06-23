@@ -186,7 +186,7 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec, scre
 
         script_commands.append(command)
 
-    outfil = f'{script_dir}/{galname}-{bin_key}-{beta_dirname}-script'
+    outfil = os.path.join(gal_script_dir, f'{galname}-{bin_key}-{beta_dirname}-script')
 
     chunks = [script_commands[i:i+scripts_per_exec] for i in range(0, len(script_commands), scripts_per_exec)]
     for idx, chunk in enumerate(chunks):
