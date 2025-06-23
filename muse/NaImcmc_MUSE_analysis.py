@@ -15,6 +15,8 @@ from mangadap.util.parser import DefaultConfig
 from IPython import embed
 from datetime import datetime
 import json
+import math
+from glob import glob
 
 def get_data_path():
     config_filepath = 'config.json'
@@ -35,7 +37,7 @@ def get_data_path():
                             """)
 
 
-def setup_script(galname, bin_key, beta_corr, binsperrun, screen):
+def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec, screen):
     # data root directory path
     data_root_dir = get_data_path()
 
@@ -89,27 +91,30 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, screen):
     cube_file_path = os.path.join(output_cube_dir,
                                   f"manga-{plate}-{ifu}-LOGCUBE-{bin_key}-{analysisplan_methods}.fits")
 
-    # directory where the MCMC script will placed in
+    ## directory where the MCMC script will placed in
     repo_dir = os.path.dirname(os.path.abspath(__file__))
     script_dir = os.path.join(repo_dir, 'mcmc_scripts')
-    if not os.path.exists(script_dir):
-        os.mkdir(script_dir)
+    gal_script_dir = os.path.join(script_dir, f'{galname}-{bin_key}')        
+    os.makedirs(gal_script_dir, exist_ok=True)
+    # remove old scripts if they exist
+    old_files = glob(os.path.join(gal_script_dir), "*.sh")
+    if len(old_files)>0:
+        print("Removing old scripts...")
+        for file in old_files:
+            try:
+                os.remove(file)
+                print(f'Deleted {file}')
+            except Exception as e:
+                print(f"Warning: could not delete {file}: {e}")
 
+    
+    # directory for logfiles containing terminal output
     log_dir = os.path.join(repo_dir, 'script_logs')
-    if not os.path.exists(log_dir):
-        os.mkdir(log_dir)
-    
     gal_log_dir = os.path.join(log_dir, f"{galname}-{bin_key}")
-    if not os.path.exists(gal_log_dir):
-        os.mkdir(gal_log_dir)
-    
-    outfil = f'{script_dir}/{galname}-{bin_key}-{beta_dirname}-script'
+    os.makedirs(gal_log_dir, exist_ok=True)
 
-    # directories for the outputs of run_mcmc
+    # directories for the output data of run_mcmc
     NaImcmc_dir = os.path.join(data_root_dir, "mcmc_outputs/")
-    os.makedirs(NaImcmc_dir, exist_ok=True)
-
-    # output mcmc galaxy directory
     mcmc_gal_dir = os.path.join(NaImcmc_dir, f'{galname}-{bin_key}', beta_dirname, analysisplan_methods)
     os.makedirs(mcmc_gal_dir, exist_ok=True)
 
@@ -152,55 +157,45 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, screen):
     LSFvel_str = "{:.2f}".format(median_LSFvel)
     redshift_str = "{:.6f}".format(redshift)
 
-    f = open(outfil, "w")
-    f.write("#!/bin/sh\n")
-
     # number of total bins from bin ID map
     nbins = np.max(binid_map)
 
     # Number of separate "runs"
     nruns = int(nbins / binsperrun)
 
-    if nruns > 40:
-        ask = None
-        while ask is None:
-            print(f"WARNING: Argument {binsperrun} creates {nruns} mcmc instances which exceeds recommended amount of 20.")
-            ask = input("Continue? [Y/N]\n")
-            if ask.lower() == 'y':
-                continue
-            elif ask.lower() == 'n':
-                raise TypeError(f"User Cancel")
-            else:
-                print("Invalid Response.")
-                ask = None
-        
+    script_commands = []
 
     for nn in range(nruns + 1):
-
         startbinid = nn * binsperrun
         endbinid = (nn + 1) * binsperrun
 
         if (endbinid > nbins):
             endbinid = nbins
 
-        jobname = 'NaImcmc' + '_bin_' + str(startbinid) + '_' + str(endbinid) + '_run' + str(nn)
-        
+        jobname = f"NaImcmc_bin_{startbinid}_{endbinid}_run{nn}"
+        log_path = f"{gal_log_dir}/NaImcmc_bin_{startbinid}_{endbinid}_run_{nn}.log"
+
+        command = (
+            f'python NaImcmc_MUSE_analysis.py 1 {galname} {bin_key} {beta_corr} '
+            f'{redshift_str} {LSFvel_str} {nn} {startbinid} {endbinid} > {log_path} 2>&1'
+        )
+
         if screen:
-            f.write('screen -mdS ' + jobname + ' sh -c "python NaImcmc_MUSE_analysis.py 1 ' +
-                    galname + ' ' + bin_key + ' ' + str(beta_corr) + ' ' +
-                    redshift_str + ' ' + LSFvel_str + ' ' + str(nn) + ' ' +
-                    str(startbinid) + ' ' + str(endbinid) + '>' + ' ' + 
-                    f"{gal_log_dir}/NaImcmc_bin_{str(startbinid)}_{str(endbinid)}_run_{str(nn)}.log" + 
-                    '2>&1' + '"\n')
+            command = f'screen -mdS {jobname} sh -c "{command}"'
         else:
-            f.write('nohup python NaImcmc_MUSE_analysis.py 1 ' +
-                    galname + ' ' + bin_key + ' ' + str(beta_corr) + ' ' +
-                    redshift_str + ' ' + LSFvel_str + ' ' + str(nn) + ' ' +
-                    str(startbinid) + ' ' + str(endbinid) + ' >' + ' ' + 
-                    f"{gal_log_dir}/NaImcmc_bin_{str(startbinid)}_{str(endbinid)}_run_{str(nn)}.log" + 
-                    ' 2>&1 &' + '\n')
+            command = f"nohup {command}"
 
+        script_commands.append(command)
 
+    outfil = f'{script_dir}/{galname}-{bin_key}-{beta_dirname}-script'
+
+    chunks = [script_commands[i:i+scripts_per_exec] for i in range(0, len(script_commands), scripts_per_exec)]
+    for idx, chunk in enumerate(chunks):
+        chunk_filename = f'{outfil}_{idx:02d}.sh'
+        with open(chunk_filename, 'w') as f:
+            f.write("#!/bin/sh\n")
+            for line in chunk:
+                f.write(line + '\n')
     f.close()
     # Set up script that lists
     # input root, redshift, LSFvel, startbinid, endbinid
@@ -273,7 +268,7 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
     os.makedirs(mcmc_save_dir, exist_ok=True)
 
     outfits_file_name = f'{galname}-{bin_key}-binid-{startbinid}-{endbinid}-samples-run-{binid_run}.fits'
-
+    outfile_path = os.path.join(mcmc_save_dir, outfits_file_name)
     # For continuum-normalization around NaI
     # wavelength continuum fitting range outside of NaI region
     blim = [5850.0, 5870.0]
@@ -303,10 +298,10 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
     # observed wavelength
     obswave = hdu_cube['WAVE'].data
 
-    sv_samples = []
-    sv_binnumber = []
-    sv_percentiles = []
-    sv_velocities = []
+    # sv_samples = []
+    # sv_binnumber = []
+    # sv_percentiles = []
+    # sv_velocities = []
 
     # Set up array with all relevant binids
     fitbins = np.arange(startbinid, endbinid + 1)
@@ -316,21 +311,27 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         # bin ID index
         ind = binid_map == qq
 
+        # indices of bin spaxels
+        ny, nx = np.where(ind)
+        y, x = ny[0], nx[0]
+
         # single bin velocity
-        binvel = ppxf_v_map[ind][0]
+        binvel = ppxf_v_map[y, x]
+
         # single flux, error and model spectrum corresponding to that bin
-        flux_bin = np.ma.array(spec[:, ind][:, 0])
-        err_bin = np.ma.array(espec[:, ind][:, 0])
-        mod_bin = np.ma.array(mod[:, ind][:, 0])
+        # flux_bin = np.ma.array(spec[:, ind][:, 0])
+        # err_bin = np.ma.array(espec[:, ind][:, 0])
+        # mod_bin = np.ma.array(mod[:, ind][:, 0])
+        flux_bin = np.ma.array(spec[:, y, x])
+        err_bin = np.ma.array(espec[:, y, x])
+        mod_bin = np.ma.array(mod[:, y, x])
 
         # Determine bin redshift: cz in km/s = tstellar_kin[*,0]
-        # bin_z = (cz + stellar_vfield[qq]) / sol
-        # cosmo_z = cz / sol
         bin_z = redshift + ((1 + redshift) * (binvel / c))
         restwave = obswave / (1.0 + bin_z)
 
         # gas flux = (total flux / continuum)
-        gas_ndata = continuum_normalize_NaI.smod_norm(restwave, flux_bin, err_bin, mod_bin, blim, rlim)
+        gas_ndata = continuum_normalize_NaI.smod_norm(restwave, flux_bin, err_bin, mod_bin, blim, rlim, emline_mask=True)
         print("""Beginning fit for bin {0} """.format(qq))
 
         # Cut out NaI
@@ -341,14 +342,17 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         sres_NaI = LSFvel
 
         data = {'wave': restwave_NaI, 'flux': flux_NaI, 'err': err_NaI, 'velres': sres_NaI}
-        # pdb.set_trace()
 
         # check for bad data being masked
         if (data['flux'].mask.all() == True) | (data['err'].mask.all() == True):
-            sv_binnumber.append(binid_map[ind][0])
-            sv_samples.append(np.zeros((100, 1100, 4)))
-            sv_percentiles.append(np.zeros((4, 3)))
-            sv_velocities.append(-999)
+            # sv_binnumber.append(binid_map[ind][0])
+            # sv_samples.append(np.zeros((100, 1100, 4)))
+            # sv_percentiles.append(np.zeros((4, 3)))
+            # sv_velocities.append(-999)
+            bin_number = binid_map[ind][0]
+            samples = np.zeros((100, 1100, 4))
+            percentiles = np.zeros((4,3))
+            bin_velocity = -999
             continue
 
         # Guess good model parameters
@@ -368,59 +372,60 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         lamrest = 5897.5581
         velocity = ((lamred_mcmc[0] / lamrest) - 1) * c
 
-        sv_binnumber.append(binid_map[ind][0])
-        sv_samples.append(datfit.samples)
-        sv_percentiles.append(datfit.theta_percentiles)
-        sv_velocities.append(velocity)
+
+        bin_number = binid_map[ind][0]
+        samples = datfit.samples
+        percentiles = datfit.theta_percentiles
+        bin_velocity = velocity
+        row = Table([[bin_number], [samples], [percentiles], [bin_velocity]],
+                    names = ('bin', 'samples', 'percentiles', 'velocities'))
+        
+        if not os.path.exists(outfile_path):
+            row.write(outfile_path, format='fits', overwrite=True)
+        else:
+            row.write(outfile_path, format='fits', append=True)
+
+        # sv_binnumber.append(binid_map[ind][0])
+        # sv_samples.append(datfit.samples)
+        # sv_percentiles.append(datfit.theta_percentiles)
+        # sv_velocities.append(velocity)
         end_time2 = time.time()
         print('Time elapsed for this bin {:.2f} minutes'.format((end_time2 - start_time2) / 60))
 
-    t = Table([sv_binnumber, sv_samples, sv_percentiles, sv_velocities],
-              names=('bin', 'samples', 'percentiles', 'velocities'))
-    fits.writeto(os.path.join(mcmc_save_dir, outfits_file_name), np.array(t), overwrite=True)
+    # t = Table([sv_binnumber, sv_samples, sv_percentiles, sv_velocities],
+    #           names=('bin', 'samples', 'percentiles', 'velocities'))
+    # fits.writeto(os.path.join(mcmc_save_dir, outfits_file_name), np.array(t), overwrite=True)
     end_time1 = time.time()
     print('Total time elapsed {:.2f} hours'.format((end_time1 - start_time1) / 3600))
 
 
+#### args:
+# setup_flag galname bin_method beta_corr_flag, bins_per_run
+
 def main():
     flg = int(sys.argv[1])
+    gal = sys.argv[2] # galaxy name
+    bin_key = sys.argv[3] # binning method
+    if sys.argv[4].lower() != 'true' or sys.argv[4].lower() != 'false':
+        raise ValueError('correlation correction flag must be either True or False')
+    beta_corr = sys.argv[4].lower() == 'true' # beta correction flag
 
     if (flg == 0):
-        # galaxy name
-        gal = sys.argv[2]
-        # binning method
-        bin_key = sys.argv[3]
-        # correlation correction flag
-        if sys.argv[4] == 'True':
-            beta_corr = True
-        elif sys.argv[4] == 'False':
-            beta_corr = False
-        else:
-            raise ValueError('correlation correction flag must be either True or False')
-        # number of bins per run
-        binsperrun = int(sys.argv[5])
-
+        binsperrun = int(sys.argv[5]) # number of bins per subscript
         try:
-            if sys.argv[6] == 'True':
-                screen = True
-            elif sys.argv[6] == 'False':
-                screen = False
-            else:
-                print(f"Input argument '{sys.argv[6]}' invalid. Setting up script with nohup")
-        except:
+            scripts_per_exec = int(sys.argv[6])
+        except IndexError:
+            scripts_per_exec = 1
+        try:
+            screen = sys.argv[7].lower == 'true'
+            print(f"Screen flag input: '{sys.argv[7]}'\nUsing screen: {screen}")
+        except IndexError:
             screen = False
             print(f"Screen not specified. Setting up script with nohup")
-
+            
         setup_script(gal, bin_key, beta_corr, binsperrun, screen=screen)
 
     if (flg == 1):
-        # pdb.set_trace()
-        gal = sys.argv[2]
-        bin_key = sys.argv[3]
-        if sys.argv[4] == 'True':
-            beta_corr = True
-        else:
-            beta_corr = False
         redshift = float(sys.argv[5])
         LSFvel = float(sys.argv[6])
         binid_run = int(sys.argv[7])
