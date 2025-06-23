@@ -186,6 +186,9 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec, scre
 
         script_commands.append(command)
 
+    if scripts_per_exec is None:
+        scripts_per_exec = len(script_commands)
+        
     outfil = os.path.join(gal_script_dir, f'{galname}-{bin_key}-{beta_dirname}-script')
 
     chunks = [script_commands[i:i+scripts_per_exec] for i in range(0, len(script_commands), scripts_per_exec)]
@@ -416,7 +419,7 @@ def main():
         try:
             scripts_per_exec = int(sys.argv[6])
         except IndexError:
-            scripts_per_exec = 1
+            scripts_per_exec = None
         try:
             screen = sys.argv[7].lower == 'true'
             print(f"Screen flag input: '{sys.argv[7]}'\nUsing screen: {screen}")
