@@ -406,8 +406,8 @@ def main():
     flg = int(sys.argv[1])
     gal = sys.argv[2] # galaxy name
     bin_key = sys.argv[3] # binning method
-    if sys.argv[4].lower() != 'true' or sys.argv[4].lower() != 'false':
-        raise ValueError('correlation correction flag must be either True or False')
+    if sys.argv[4].lower() not in ('true', 'false'):
+        raise ValueError(f'Correlation correction flag must be either True or False. Input: {sys.argv[4]}')
     beta_corr = sys.argv[4].lower() == 'true' # beta correction flag
 
     if (flg == 0):
