@@ -189,13 +189,15 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec, scre
     outfil = os.path.join(gal_script_dir, f'{galname}-{bin_key}-{beta_dirname}-script')
 
     chunks = [script_commands[i:i+scripts_per_exec] for i in range(0, len(script_commands), scripts_per_exec)]
+    
+    print('Writing new scripts...')
     for idx, chunk in enumerate(chunks):
         chunk_filename = f'{outfil}_{idx:02d}.sh'
         with open(chunk_filename, 'w') as f:
             f.write("#!/bin/sh\n")
             for line in chunk:
                 f.write(line + '\n')
-    f.close()
+        print(f'Wrote {chunk_filename}')
     # Set up script that lists
     # input root, redshift, LSFvel, startbinid, endbinid
 
