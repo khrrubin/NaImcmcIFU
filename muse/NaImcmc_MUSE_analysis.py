@@ -96,7 +96,7 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec, scre
     gal_script_dir = os.path.join(script_dir, f'{galname}-{bin_key}')        
     os.makedirs(gal_script_dir, exist_ok=True)
     # remove old scripts if they exist
-    old_files = glob.glob(os.path.join(gal_script_dir), "*.sh")
+    old_files = glob.glob(os.path.join(gal_script_dir, "*.sh"))
     if len(old_files)>0:
         print("Removing old scripts...")
         for file in old_files:
