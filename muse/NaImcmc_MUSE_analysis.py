@@ -423,7 +423,7 @@ def main():
             screen = False
             print(f"Screen not specified. Setting up script with nohup")
             
-        setup_script(gal, bin_key, beta_corr, binsperrun, screen=screen)
+        setup_script(gal, bin_key, beta_corr, binsperrun, scripts_per_exec, screen=screen)
 
     if (flg == 1):
         redshift = float(sys.argv[5])
