@@ -65,31 +65,40 @@ def norm(wave, flux, err, blim, rlim, FIT_FLG=None, smod=None):
 
 
 
+def smod_norm(wave, flux, err, smod, blim, rlim, emline_mask = True, s = 1):
 
-def smod_norm(wave, flux, err, smod, blim, rlim):
-
-
-    bind = np.where((wave > blim[0]) & (wave < blim[1]) & (flux.mask==False))
-    rind = np.where((wave > rlim[0]) & (wave < rlim[1]) & (flux.mask==False))
-
+    ## continuum outside of Na I for S/N
+    bind = np.where((wave > blim[0]) & (wave < blim[1]))
+    rind = np.where((wave > rlim[0]) & (wave < rlim[1]))
 
     if((len(bind[0])==0) | (len(rind[0])==0)):
-
         mskflg = 1
         s2n = 0.0
-        
     else:
-      
-        x = np.concatenate([wave[bind],wave[rind]])
         y = np.ma.concatenate([flux[bind],flux[rind]])
         sigy = np.ma.concatenate([err[bind],err[rind]])
-
         s2n = np.median(y/sigy)
-        
+    
+    ## normalize
     nflux = flux/smod
     nerr = err/smod
     mskflg = 0
 
+    if emline_mask:
+        continuum_inds = np.concatenate([bind, rind])
+        continuum = flux[continuum_inds]
+        med = np.median(continuum)
+        std = np.std(continuum)
+        continuum_mask = (continuum < med + s * std) & (continuum > med - s * std)
+
+        median = np.median(continuum[continuum_mask])
+        standard_dev = np.std(continuum[continuum_mask])
+
+        mask = flux > median + s * standard_dev
+
+        nflux.mask = mask
+        nerr.mask = mask
+        smod.mask = mask
+
     return {'nwave':wave, 'nflux':nflux, 'nerr':nerr,
             'cont':smod, 's2n':s2n, 'mskflg':mskflg}
-    
