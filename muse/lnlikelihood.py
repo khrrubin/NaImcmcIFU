@@ -11,7 +11,9 @@ def lnprior(theta):
 
     sol = 2.998e5    # km/s
     transinfo = model_NaI.transitions()
-    vlim = 700.0     # km/s
+
+    vlim = 450 # km/s
+    #vlim = 700.0     # km/s
     lamlim1 = -1.0 * (vlim * transinfo['lamred0'] / sol) + transinfo['lamred0']
     lamlim2 = (vlim * transinfo['lamred0'] / sol) + transinfo['lamred0']
 
