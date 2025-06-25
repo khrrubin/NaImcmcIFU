@@ -68,10 +68,10 @@ def norm(wave, flux, err, blim, rlim, FIT_FLG=None, smod=None):
 def smod_norm(wave, flux, err, smod, blim, rlim, emline_mask = True, s = 1):
 
     ## continuum outside of Na I for S/N
-    bind = np.where((wave > blim[0]) & (wave < blim[1]))[0]
-    rind = np.where((wave > rlim[0]) & (wave < rlim[1]))[0]
+    bind = np.where((wave > blim[0]) & (wave < blim[1]))
+    rind = np.where((wave > rlim[0]) & (wave < rlim[1]))
 
-    if((len(bind[0])==0) | (len(rind[0])==0)):
+    if((len(bind)==0) | (len(rind)==0)):
         mskflg = 1
         s2n = 0.0
     else:
@@ -85,8 +85,7 @@ def smod_norm(wave, flux, err, smod, blim, rlim, emline_mask = True, s = 1):
     mskflg = 0
 
     if emline_mask:
-        continuum_inds = np.concatenate([bind, rind])
-        continuum = flux[continuum_inds]
+        continuum = np.concatenate((flux[bind], flux[rind]))
         med = np.median(continuum)
         std = np.std(continuum)
         continuum_mask = (continuum < med + s * std) & (continuum > med - s * std)
