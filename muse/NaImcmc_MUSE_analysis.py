@@ -181,7 +181,7 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec):
             f'{redshift_str} {LSFvel_str} {nn} {startbinid} {endbinid} > {escaped_log_path} 2>&1'
         )
 
-        shell_command = f"nohup {py_command}"
+        shell_command = f"nohup {py_command} &"
 
         script_commands.append(shell_command)
 
@@ -401,7 +401,7 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
             percentiles = np.zeros((4,3))
             bin_velocity = -999
             continue
-        
+
         # gas flux = (total flux / continuum)
         gas_ndata = continuum_normalize_NaI.smod_norm(restwave, flux_bin, err_bin, mod_bin, blim, rlim, emline_mask=True)
         print("""Beginning fit for bin {0} """.format(qq))
