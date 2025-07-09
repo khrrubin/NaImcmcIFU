@@ -16,6 +16,7 @@ from IPython import embed
 from datetime import datetime
 import json
 import math
+import shlex
 
 def get_data_path():
     config_filepath = 'config.json'
@@ -36,7 +37,7 @@ def get_data_path():
                             """)
 
 
-def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec, screen):
+def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec):
     # data root directory path
     data_root_dir = get_data_path()
 
@@ -171,20 +172,18 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec, scre
         if (endbinid > nbins):
             endbinid = nbins
 
-        jobname = f"NaImcmc_bin_{startbinid}_{endbinid}_run{nn}"
-        log_path = f"{gal_log_dir}/NaImcmc_bin_{startbinid}_{endbinid}_run_{nn}.log"
+        log_file = f"NaImcmc_bin_{startbinid}_{endbinid}_run_{nn}.log"
+        log_path = os.path.abspath(os.path.join(gal_log_dir, log_file))
+        escaped_log_path = shlex.quote(log_path)
 
-        command = (
+        py_command = (
             f'python NaImcmc_MUSE_analysis.py 1 {galname} {bin_key} {beta_corr} '
-            f'{redshift_str} {LSFvel_str} {nn} {startbinid} {endbinid} > {log_path} 2>&1'
+            f'{redshift_str} {LSFvel_str} {nn} {startbinid} {endbinid} > {escaped_log_path} 2>&1'
         )
 
-        if screen:
-            command = f'screen -mdS {jobname} sh -c "{command}"'
-        else:
-            command = f"nohup {command}"
+        shell_command = f"nohup {py_command}"
 
-        script_commands.append(command)
+        script_commands.append(shell_command)
 
     if scripts_per_exec is None:
         scripts_per_exec = len(script_commands)
@@ -203,6 +202,66 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec, scre
         print(f'Wrote {chunk_filename}')
     # Set up script that lists
     # input root, redshift, LSFvel, startbinid, endbinid
+
+
+def equivalent_width(flux, model, restwave):
+
+    ## define the Na D window bounds
+    nad_region = 5885, 5905
+    continuum_lims = [(5850, 5870), (5910, 5930)]
+
+    ew = -999
+    
+    norm_flux = flux / model
+
+    finite = np.isfinite(norm_flux)
+
+    if np.sum(finite) == 0:
+        return ew
+    
+    norm_flux = norm_flux[finite]
+    wavelength = restwave[finite]
+
+    ## get the indices defining the Na D wavelength region
+    nad_inds = np.where((wavelength >= nad_region[0]) & (wavelength <= nad_region[1]))[0]
+
+    ## extract Na D values
+    norm_flux_nad = norm_flux[nad_inds]
+    restwave_nad = wavelength[nad_inds]
+
+    ## emline masking
+    blue_lims = continuum_lims[0]
+    blue_inds = np.where((restwave > blue_lims[0]) & (restwave < blue_lims[1]))[0]
+
+    red_lims = continuum_lims[1]
+    red_inds = np.where((restwave > red_lims[0]) & (restwave < red_lims[1]))[0]
+
+    continuum_inds = np.concatenate([blue_inds, red_inds])
+    norm_flux_continuum = norm_flux[continuum_inds]
+
+    continuum_filter = (norm_flux_continuum > np.median(norm_flux_continuum) - np.std(norm_flux_continuum)) & (norm_flux_continuum < np.median(norm_flux_continuum) + np.std(norm_flux_continuum))
+    continuum_filtered = norm_flux_continuum[continuum_filter]
+
+    median = np.median(continuum_filtered)
+    std = np.std(continuum_filtered)
+    emline_threshold = median + std
+
+    flux_filter = norm_flux_nad < emline_threshold
+
+    norm_flux_nad = norm_flux_nad[flux_filter]
+    restwave_nad = restwave_nad[flux_filter]
+
+    if len(norm_flux_nad) < 10:
+        return ew
+    
+    ones = np.ones(len(norm_flux_nad))
+    dLambda = np.gradient(restwave_nad)
+    EW = np.sum(  (( ones - norm_flux_nad ) * dLambda)  )
+
+    ew = EW if np.isfinite(EW) else ew
+
+    return ew
+
 
 def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid, endbinid):
     start_time1 = time.time()
@@ -334,6 +393,15 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         bin_z = redshift + ((1 + redshift) * (binvel / c))
         restwave = obswave / (1.0 + bin_z)
 
+        equiv_w = equivalent_width(flux_bin, mod_bin, restwave)
+
+        if equiv_w <= 0:
+            bin_number = binid_map[ind][0]
+            samples = np.zeros((100, 1100, 4))
+            percentiles = np.zeros((4,3))
+            bin_velocity = -999
+            continue
+        
         # gas flux = (total flux / continuum)
         gas_ndata = continuum_normalize_NaI.smod_norm(restwave, flux_bin, err_bin, mod_bin, blim, rlim, emline_mask=True)
         print("""Beginning fit for bin {0} """.format(qq))
@@ -420,14 +488,8 @@ def main():
             scripts_per_exec = int(sys.argv[6])
         except IndexError:
             scripts_per_exec = None
-        try:
-            screen = sys.argv[7].lower == 'true'
-            print(f"Screen flag input: '{sys.argv[7]}'\nUsing screen: {screen}")
-        except IndexError:
-            screen = False
-            print(f"Screen not specified. Setting up script with nohup")
             
-        setup_script(gal, bin_key, beta_corr, binsperrun, scripts_per_exec, screen=screen)
+        setup_script(gal, bin_key, beta_corr, binsperrun, scripts_per_exec)
 
     if (flg == 1):
         redshift = float(sys.argv[5])
