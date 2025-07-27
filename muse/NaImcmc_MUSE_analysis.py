@@ -4,7 +4,7 @@ import sys
 import os
 import glob
 from astropy.io import fits
-from astropy.table import Table, Column, MaskedColumn
+from astropy.table import Table, Column, MaskedColumn, vstack
 from linetools.spectra.xspectrum1d import XSpectrum1D
 import model_NaI
 import model_fitter
@@ -263,6 +263,22 @@ def equivalent_width(flux, model, restwave):
     return ew
 
 
+def append_row_to_fits(filepath, bin_number, samples, percentiles, velocity):
+    row_data = Table()
+    row_data['bin'] = [bin_number]
+    row_data['samples'] = [samples]
+    row_data['percentiles'] = [percentiles] 
+    row_data['velocities'] = [velocity]
+
+    if not os.path.exists(filepath):
+        # Create new file
+        row_data.write(filepath, format='fits', overwrite=True)
+    else:
+        # Read existing data, append new row, and write back
+        existing_data = Table.read(filepath)
+        combined_data = vstack([existing_data, row_data])
+        combined_data.write(filepath, format='fits', overwrite=True)
+
 def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid, endbinid):
     start_time1 = time.time()
 
@@ -400,6 +416,7 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
             samples = np.zeros((100, 1100, 4))
             percentiles = np.zeros((4,3))
             bin_velocity = -999
+            append_row_to_fits(outfile_path, bin_number, samples, percentiles, bin_velocity)
             continue
 
         # gas flux = (total flux / continuum)
@@ -425,6 +442,7 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
             samples = np.zeros((100, 1100, 4))
             percentiles = np.zeros((4,3))
             bin_velocity = -999
+            append_row_to_fits(outfile_path, bin_number, samples, percentiles, bin_velocity)
             continue
 
         # Guess good model parameters
@@ -449,13 +467,17 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         samples = datfit.samples
         percentiles = datfit.theta_percentiles
         bin_velocity = velocity
-        row = Table([[bin_number], [samples], [percentiles], [bin_velocity]],
-                    names = ('bin', 'samples', 'percentiles', 'velocities'))
+
+        append_row_to_fits(outfile_path, bin_number, samples, percentiles, bin_velocity)
+        ## DID NOT WORK CORRECTLY FOR FITS FILES
+        # row = Table([[bin_number], [samples], [percentiles], [bin_velocity]],
+        #             names = ('bin', 'samples', 'percentiles', 'velocities'))
         
-        if not os.path.exists(outfile_path):
-            row.write(outfile_path, format='fits', overwrite=True)
-        else:
-            row.write(outfile_path, format='fits', append=True)
+        # if not os.path.exists(outfile_path):
+        #     row.write(outfile_path, format='fits', overwrite=True)
+        # else:
+        #     row.write(outfile_path, format='fits', append=True)
+        ####
 
         # sv_binnumber.append(binid_map[ind][0])
         # sv_samples.append(datfit.samples)
