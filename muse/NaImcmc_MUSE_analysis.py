@@ -333,7 +333,6 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
                                   f"manga-{plate}-{ifu}-MAPS-{bin_key}-{analysisplan_methods}.fits")
 
     # main output directory where the MCMC runs will be placed in
-    #NaImcmc_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'NaI_MCMC_output')
     NaImcmc_dir = os.path.join(data_root_dir, "mcmc_outputs/")
     os.makedirs(NaImcmc_dir, exist_ok=True)
 
@@ -377,11 +376,6 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
     # observed wavelength
     obswave = hdu_cube['WAVE'].data
 
-    # sv_samples = []
-    # sv_binnumber = []
-    # sv_percentiles = []
-    # sv_velocities = []
-
     # Set up array with all relevant binids
     fitbins = np.arange(startbinid, endbinid + 1)
 
@@ -398,12 +392,14 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         binvel = ppxf_v_map[y, x]
 
         # single flux, error and model spectrum corresponding to that bin
-        # flux_bin = np.ma.array(spec[:, ind][:, 0])
-        # err_bin = np.ma.array(espec[:, ind][:, 0])
-        # mod_bin = np.ma.array(mod[:, ind][:, 0])
         flux_bin = np.ma.array(spec[:, y, x])
         err_bin = np.ma.array(espec[:, y, x])
         mod_bin = np.ma.array(mod[:, y, x])
+
+        zeromask = (err_bin == 0) | (mod_bin == 0) | ~np.isfinite(err_bin)
+        flux_bin.mask = zeromask
+        err_bin.mask = zeromask
+        mod_bin.mask = zeromask
 
         # Determine bin redshift: cz in km/s = tstellar_kin[*,0]
         bin_z = redshift + ((1 + redshift) * (binvel / c))
@@ -434,10 +430,6 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
 
         # check for bad data being masked
         if (data['flux'].mask.all() == True) | (data['err'].mask.all() == True):
-            # sv_binnumber.append(binid_map[ind][0])
-            # sv_samples.append(np.zeros((100, 1100, 4)))
-            # sv_percentiles.append(np.zeros((4, 3)))
-            # sv_velocities.append(-999)
             bin_number = binid_map[ind][0]
             samples = np.zeros((100, 1100, 4))
             percentiles = np.zeros((4,3))
@@ -455,7 +447,6 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         datfit = model_fitter.model_fitter(data, theta_guess)
         # Run the MCMC
         datfit.mcmc()
-        # transinfo = model_NaI.transitions()
 
         # get gas velocity from model lambda and rest lambda
         lamred_mcmc, logN_mcmc, bD_mcmc, Cf_mcmc = datfit.theta_percentiles
@@ -469,32 +460,13 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         bin_velocity = velocity
 
         append_row_to_fits(outfile_path, bin_number, samples, percentiles, bin_velocity)
-        ## DID NOT WORK CORRECTLY FOR FITS FILES
-        # row = Table([[bin_number], [samples], [percentiles], [bin_velocity]],
-        #             names = ('bin', 'samples', 'percentiles', 'velocities'))
-        
-        # if not os.path.exists(outfile_path):
-        #     row.write(outfile_path, format='fits', overwrite=True)
-        # else:
-        #     row.write(outfile_path, format='fits', append=True)
-        ####
-
-        # sv_binnumber.append(binid_map[ind][0])
-        # sv_samples.append(datfit.samples)
-        # sv_percentiles.append(datfit.theta_percentiles)
-        # sv_velocities.append(velocity)
         end_time2 = time.time()
         print('Time elapsed for this bin {:.2f} minutes'.format((end_time2 - start_time2) / 60))
 
-    # t = Table([sv_binnumber, sv_samples, sv_percentiles, sv_velocities],
-    #           names=('bin', 'samples', 'percentiles', 'velocities'))
-    # fits.writeto(os.path.join(mcmc_save_dir, outfits_file_name), np.array(t), overwrite=True)
     end_time1 = time.time()
     print('Total time elapsed {:.2f} hours'.format((end_time1 - start_time1) / 3600))
 
 
-#### args:
-# setup_flag galname bin_method beta_corr_flag, bins_per_run
 
 def main():
     flg = int(sys.argv[1])
