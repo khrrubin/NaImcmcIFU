@@ -93,7 +93,7 @@ def smod_norm(wave, flux, err, smod, blim, rlim, emline_mask = True, s = 1):
         median = np.median(continuum[continuum_mask])
         standard_dev = np.std(continuum[continuum_mask])
 
-        mask = flux > median + s * standard_dev
+        mask = nflux > median + s * standard_dev
 
         nflux.mask = mask
         nerr.mask = mask
