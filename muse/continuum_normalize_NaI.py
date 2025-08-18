@@ -85,7 +85,7 @@ def smod_norm(wave, flux, err, smod, blim, rlim, emline_mask = True, s = 1):
     mskflg = 0
 
     if emline_mask:
-        continuum = np.concatenate((flux[bind], flux[rind]))
+        continuum = np.concatenate((nflux[bind], nflux[rind]))
         med = np.median(continuum)
         std = np.std(continuum)
         continuum_mask = (continuum < med + s * std) & (continuum > med - s * std)
