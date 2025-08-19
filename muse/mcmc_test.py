@@ -50,7 +50,11 @@ def print_results(bin_number, percentiles, velocity, equivw):
     print(f"W_eq = {equivw:.3f} Å")
 
 def main(galname, bin_key, binID, plot = False, quiet = False):
-
+    blim = [5850.0, 5870.0]
+    rlim = [5910.0, 5930.0]
+    fitlim = [5880.0, 5910.0]
+    c = 2.998e5
+    
     data_root_dir = get_data_path()
     main_cube_dir = os.path.join(data_root_dir, 'muse_cubes')
 
@@ -102,11 +106,6 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
     maps_file_path = os.path.join(output_cube_dir,
                                   f"manga-{plate}-{ifu}-MAPS-{bin_key}-{analysisplan_methods}.fits")
 
-
-    blim = [5850.0, 5870.0]
-    rlim = [5910.0, 5930.0]
-    fitlim = [5880.0, 5910.0]
-    c = 2.998e5
 
     hdu_map = fits.open(maps_file_path)
     binid_map = hdu_map['BINID'].data[0]
