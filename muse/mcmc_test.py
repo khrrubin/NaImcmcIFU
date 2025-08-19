@@ -130,21 +130,25 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
 
     bin_z = redshift + ((1 + redshift) * (binvel / c))
     restwave = np.ma.array(obswave / (1.0 + bin_z))
+
     nflux = np.ma.array(flux_bin / mod_bin)
     nerr = np.ma.array(err_bin / mod_bin)
 
-    zeromask = ~np.isfinite(nerr) | ~np.isfinite(nflux)
-    nflux.mask = zeromask
-    nerr.mask = zeromask
-    restwave.mask = zeromask
+    sres_NaI = LSFvel
 
-    em_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim))
-    nflux.mask += em_mask
-    nerr.mask += em_mask
-    restwave.mask += em_mask
-    equiv_w = continuum_analyses.equivalent_width(nflux, restwave)
+    infinite_mask = ~np.isfinite(nflux) | ~np.isfinite(nerr)
+    nflux.mask = infinite_mask
+    nerr.mask = infinite_mask
+    restwave.mask = infinite_mask
 
     print("""Beginning fit for bin {0} """.format(binID))
+    
+    emission_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim), fitlim, testrun=True)
+    nflux.mask += emission_mask
+    nerr.mask += emission_mask
+    restwave.mask += emission_mask
+
+    equiv_w = continuum_analyses.equivalent_width(nflux, restwave)
 
     if equiv_w <= 0:
         bin_number = binid_map[ind][0]
@@ -154,24 +158,26 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
         print(f"ERROR: Equivalent width returned {equiv_w}")
         print_results(bin_number, samples, percentiles, bin_velocity)
         return
-    # Cut out NaI
-    select = np.where((nflux > fitlim[0]) & (nflux < fitlim[1]))
-    restwave_NaI = restwave[select].astype('float64')
-    flux_NaI = nflux[select].astype('float64')
-    err_NaI = nerr[select].astype('float64')
-    sres_NaI = LSFvel
 
-    data = {'wave': restwave_NaI, 'flux': flux_NaI, 'err': err_NaI, 'velres': sres_NaI}
+
+    # Cut out NaI
+    select = np.where((restwave > fitlim[0]) & (restwave < fitlim[1]))
+    nflux_nai = nflux[select]
+    nerr_nai = nerr[select]
+    restwave_nai = restwave[select]
 
     # check for bad data being masked
-    if (data['flux'].mask.all() == True) | (data['err'].mask.all() == True):
+    if np.sum(nflux_nai.mask) == len(nflux_nai):
         bin_number = binid_map[ind][0]
         samples = np.zeros((100, 1100, 4))
         percentiles = np.zeros((4,3))
         bin_velocity = -999
-        print(f"ERROR All flux or all error pixels are masked")
+        print(f"ERROR: All flux pixels are masked")
         print_results(bin_number, samples, percentiles, bin_velocity)
         return
+    
+    data = {'wave': restwave_nai, 'flux': nflux_nai, 'err': nerr_nai, 'velres': sres_NaI}
+
     # Guess good model parameters
     lamred = 5897.5581
     logN = 14.5
@@ -197,13 +203,13 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
 
     if plot:
         import matplotlib.pyplot as plt
-        bf_mod = model_NaI.model_NaI((lamred_mcmc[0], logN_mcmc[0], bD_mcmc[0], Cf_mcmc[0]), data['velres'], restwave_NaI.data)
+        bf_mod = model_NaI.model_NaI((lamred_mcmc[0], logN_mcmc[0], bD_mcmc[0], Cf_mcmc[0]), data['velres'], restwave_nai.data)
         fig, ax = plt.subplots(1,1)
-        mask = flux_NaI.mask
+        mask = nflux_nai.mask
 
-        ax.plot(restwave_NaI.data, flux_NaI.data, 'k', drawstyle = 'steps-mid', linewidth=2)
+        ax.plot(restwave_nai.data, nflux_nai.data, 'k', drawstyle = 'steps-mid', linewidth=2)
         ax.plot(bf_mod['modwv'], bf_mod['modflx'], 'b')
-        ax.scatter(restwave_NaI.data[mask], flux_NaI.data[mask], s=5, marker='x', c='r')
+        ax.scatter(restwave_nai.data[mask], nflux_nai.data[mask], s=5, marker='x', c='r')
         ax.set_xlabel(r'Wavelength $(\mathrm{\AA})$')
         ax.set_ylabel('Normalized Flux')
         ax.set_xlim(5880, 5910)
