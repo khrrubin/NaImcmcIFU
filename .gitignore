@@ -5,5 +5,5 @@
 /muse/mcmc_scripts/*script*
 
 .ipynb_checkpoints
-
+.vscode
 *.log
