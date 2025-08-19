@@ -33,9 +33,9 @@ def get_data_path():
 def arguments():
     parser = argparse.ArgumentParser(description="Test Run of MCMC on a single bin")
 
+    parser.add_argument('galname', type=str, help="Input galaxy name (NGC4030)")
+    parser.add_argument('bin_method', type=str, help="Input DAP spatial binning method (default: SQUARE0.6)")
     parser.add_argument('binID', type=int, help="Specific bin to test fit")
-    parser.add_argument('galname', type=str, help="Input galaxy name (NGC4030)", default="NGC4030")
-    parser.add_argument('bin_method', type=str, help="Input DAP spatial binning method (default: SQUARE0.6)", default="SQUARE0.6")
     parser.add_argument('-p', '--plot', help = "Plot figures for inspection (default: False)", action='store_true', default=False)
     parser.add_argument('-q','--quiet', help = "Suppress verbose outputs (default: False)", action='store_true', default = False)
     return parser.parse_args()
