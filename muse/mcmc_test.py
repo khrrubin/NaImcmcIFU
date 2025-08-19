@@ -54,7 +54,7 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
     rlim = [5910.0, 5930.0]
     fitlim = [5880.0, 5910.0]
     c = 2.998e5
-    
+
     data_root_dir = get_data_path()
     main_cube_dir = os.path.join(data_root_dir, 'muse_cubes')
 
@@ -124,24 +124,25 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
     y, x = ny[0], nx[0]
 
     binvel = ppxf_v_map[y, x]
-    flux_bin = np.ma.array(spec[:, y, x])
-    err_bin = np.ma.array(espec[:, y, x])
-    mod_bin = np.ma.array(mod[:, y, x])
-
-    zeromask = (err_bin == 0) | (mod_bin == 0) | ~np.isfinite(err_bin)
-    flux_bin.mask = zeromask
-    err_bin.mask = zeromask
-    mod_bin.mask = zeromask
+    flux_bin = spec[:, y, x]
+    err_bin = espec[:, y, x]
+    mod_bin = mod[:, y, x]
 
     bin_z = redshift + ((1 + redshift) * (binvel / c))
-    restwave = obswave / (1.0 + bin_z)
+    restwave = np.ma.array(obswave / (1.0 + bin_z))
+    nflux = np.ma.array(flux_bin / mod_bin)
+    nerr = np.ma.array(err_bin / mod_bin)
 
-    gas_ndata = continuum_normalize_NaI.smod_norm(restwave, flux_bin, err_bin, mod_bin, blim, rlim)
-    em_mask = continuum_analyses.emline_mask(gas_ndata['nflux'], gas_ndata['nwave'], tuple(blim), tuple(rlim))
-    for key in gas_ndata.keys():
-        gas_ndata[key].mask += em_mask
+    zeromask = ~np.isfinite(nerr) | ~np.isfinite(nflux)
+    nflux.mask = zeromask
+    nerr.mask = zeromask
+    restwave.mask = zeromask
 
-    equiv_w = continuum_analyses.equivalent_width(gas_ndata['nflux'], gas_ndata['nwave'])
+    em_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim))
+    nflux.mask += em_mask
+    nerr.mask += em_mask
+    restwave.mask += em_mask
+    equiv_w = continuum_analyses.equivalent_width(nflux, restwave)
 
     print("""Beginning fit for bin {0} """.format(binID))
 
@@ -154,10 +155,10 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
         print_results(bin_number, samples, percentiles, bin_velocity)
         return
     # Cut out NaI
-    select = np.where((gas_ndata['nwave'] > fitlim[0]) & (gas_ndata['nwave'] < fitlim[1]))
-    restwave_NaI = gas_ndata['nwave'][select].astype('float64')
-    flux_NaI = gas_ndata['nflux'][select].astype('float64')
-    err_NaI = gas_ndata['nerr'][select].astype('float64')
+    select = np.where((nflux > fitlim[0]) & (nflux < fitlim[1]))
+    restwave_NaI = restwave[select].astype('float64')
+    flux_NaI = nflux[select].astype('float64')
+    err_NaI = nerr[select].astype('float64')
     sres_NaI = LSFvel
 
     data = {'wave': restwave_NaI, 'flux': flux_NaI, 'err': err_NaI, 'velres': sres_NaI}
@@ -196,13 +197,13 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
 
     if plot:
         import matplotlib.pyplot as plt
-        bf_mod = model_NaI.model_NaI((lamred_mcmc[0], logN_mcmc[0], bD_mcmc[0], Cf_mcmc[0]), data['velres'], gas_ndata['nwave'].data)
+        bf_mod = model_NaI.model_NaI((lamred_mcmc[0], logN_mcmc[0], bD_mcmc[0], Cf_mcmc[0]), data['velres'], restwave_NaI.data)
         fig, ax = plt.subplots(1,1)
-        mask = gas_ndata['nflux'].mask
+        mask = flux_NaI.mask
 
-        ax.plot(gas_ndata['nwave'].data, gas_ndata['nflux'].data, 'k', drawstyle = 'steps-mid', linewidth=2)
+        ax.plot(restwave_NaI.data, flux_NaI.data, 'k', drawstyle = 'steps-mid', linewidth=2)
         ax.plot(bf_mod['modwv'], bf_mod['modflx'], 'b')
-        ax.scatter(gas_ndata['nwave'].data[mask], gas_ndata['nflux'].data[mask], s=5, marker='x', c='r')
+        ax.scatter(restwave_NaI.data[mask], flux_NaI.data[mask], s=5, marker='x', c='r')
         ax.set_xlabel(r'Wavelength $(\mathrm{\AA})$')
         ax.set_ylabel('Normalized Flux')
         ax.set_xlim(5880, 5910)
