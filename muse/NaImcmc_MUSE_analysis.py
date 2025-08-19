@@ -9,6 +9,7 @@ from linetools.spectra.xspectrum1d import XSpectrum1D
 import model_NaI
 import model_fitter
 import continuum_normalize_NaI
+import continuum_analyses
 import time
 from mangadap.config import defaults
 from mangadap.util.parser import DefaultConfig
@@ -63,8 +64,11 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec):
 
     # get parameter values from config file
     cfg = DefaultConfig(config_fil, interpolate=True)
-    plate = cfg.getint('plate', default=None)
-    ifu = cfg.getint('ifu', default=None)
+    plate = cfg.getint('plate', default = None)
+    ifu = cfg.getint('ifu', default = None)
+    redshift = cfg.getfloat('z', default = None)
+    if redshift is None:
+        raise ValueError(f"No redshift found in {config_fil}")
 
     # output directory path
     output_root_dir = os.path.join(data_root_dir, 'dap_outputs')
@@ -124,10 +128,6 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec):
     fitlim = [5880.0, 5910.0]
     # speed of light in km/s
     c = 2.998e5
-    # NGC 4030 redshift's
-    redshift = 0.00489
-    # NGC 1042 redshift's
-    # redshift = 0.00460
 
     # log maps file
     hdu_map = fits.open(cube_file_path)
@@ -204,65 +204,6 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec):
     # input root, redshift, LSFvel, startbinid, endbinid
 
 
-def equivalent_width(flux, model, restwave):
-
-    ## define the Na D window bounds
-    nad_region = 5885, 5905
-    continuum_lims = [(5850, 5870), (5910, 5930)]
-
-    ew = -999
-    
-    norm_flux = flux / model
-
-    finite = np.isfinite(norm_flux)
-
-    if np.sum(finite) == 0:
-        return ew
-    
-    norm_flux = norm_flux[finite]
-    wavelength = restwave[finite]
-
-    ## get the indices defining the Na D wavelength region
-    nad_inds = np.where((wavelength >= nad_region[0]) & (wavelength <= nad_region[1]))[0]
-
-    ## extract Na D values
-    norm_flux_nad = norm_flux[nad_inds]
-    restwave_nad = wavelength[nad_inds]
-
-    ## emline masking
-    blue_lims = continuum_lims[0]
-    blue_inds = np.where((restwave > blue_lims[0]) & (restwave < blue_lims[1]))[0]
-
-    red_lims = continuum_lims[1]
-    red_inds = np.where((restwave > red_lims[0]) & (restwave < red_lims[1]))[0]
-
-    continuum_inds = np.concatenate([blue_inds, red_inds])
-    norm_flux_continuum = norm_flux[continuum_inds]
-
-    continuum_filter = (norm_flux_continuum > np.median(norm_flux_continuum) - np.std(norm_flux_continuum)) & (norm_flux_continuum < np.median(norm_flux_continuum) + np.std(norm_flux_continuum))
-    continuum_filtered = norm_flux_continuum[continuum_filter]
-
-    median = np.median(continuum_filtered)
-    std = np.std(continuum_filtered)
-    emline_threshold = median + std
-
-    flux_filter = norm_flux_nad < emline_threshold
-
-    norm_flux_nad = norm_flux_nad[flux_filter]
-    restwave_nad = restwave_nad[flux_filter]
-
-    if len(norm_flux_nad) < 10:
-        return ew
-    
-    ones = np.ones(len(norm_flux_nad))
-    dLambda = np.gradient(restwave_nad)
-    EW = np.sum(  (( ones - norm_flux_nad ) * dLambda)  )
-
-    ew = EW if np.isfinite(EW) else ew
-
-    return ew
-
-
 def append_row_to_fits(filepath, bin_number, samples, percentiles, velocity):
     row_data = Table()
     row_data['bin'] = [bin_number]
@@ -279,7 +220,7 @@ def append_row_to_fits(filepath, bin_number, samples, percentiles, velocity):
         combined_data = vstack([existing_data, row_data])
         combined_data.write(filepath, format='fits', overwrite=True)
 
-def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid, endbinid):
+def run_mcmc(galname, bin_key, beta_corr, redshift, LSFvel, binid_run, startbinid, endbinid):
     start_time1 = time.time()
 
     # data root directory
@@ -405,7 +346,14 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
         bin_z = redshift + ((1 + redshift) * (binvel / c))
         restwave = obswave / (1.0 + bin_z)
 
-        equiv_w = equivalent_width(flux_bin, mod_bin, restwave)
+        gas_ndata = continuum_normalize_NaI.smod_norm(restwave, flux_bin, err_bin, mod_bin, blim, rlim)
+        em_mask = continuum_analyses.emline_mask(gas_ndata['nflux'], gas_ndata['nwave'], tuple(blim), tuple(rlim))
+        for key in gas_ndata.keys():
+            gas_ndata[key].mask += em_mask
+
+        equiv_w = continuum_analyses.equivalent_width(gas_ndata['nflux'], gas_ndata['nwave'])
+
+        print("""Beginning fit for bin {0} """.format(qq))
 
         if equiv_w <= 0:
             bin_number = binid_map[ind][0]
@@ -414,10 +362,6 @@ def run_mcmc(galname, bin_key, beta_corr,redshift, LSFvel, binid_run, startbinid
             bin_velocity = -999
             append_row_to_fits(outfile_path, bin_number, samples, percentiles, bin_velocity)
             continue
-
-        # gas flux = (total flux / continuum)
-        gas_ndata = continuum_normalize_NaI.smod_norm(restwave, flux_bin, err_bin, mod_bin, blim, rlim, emline_mask=True)
-        print("""Beginning fit for bin {0} """.format(qq))
 
         # Cut out NaI
         select = np.where((gas_ndata['nwave'] > fitlim[0]) & (gas_ndata['nwave'] < fitlim[1]))
