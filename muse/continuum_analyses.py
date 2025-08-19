@@ -1,7 +1,9 @@
 import numpy as np
 
-def emline_mask(flux: np.ndarray, wave: np.ndarray, cont_blim: tuple, cont_rlim: tuple, s = 1):
+def emline_mask(flux, wave, cont_blim: tuple, cont_rlim: tuple, s = 1, testrun = False):
 
+    if testrun:
+        print("Masking emission lines")
     bind = np.where((wave > cont_blim[0]) & (wave < cont_blim[1]))
     rind = np.where((wave > cont_rlim[0]) & (wave < cont_rlim[1]))
 
@@ -12,12 +14,16 @@ def emline_mask(flux: np.ndarray, wave: np.ndarray, cont_blim: tuple, cont_rlim:
 
     median = np.median(continuum[continuum_mask])
     standard_dev = np.std(continuum[continuum_mask])
+    if testrun:
+        print(f"Continuum level: {median:.3f}")
 
     mask = flux > median + s * standard_dev
 
+    if testrun:
+        print(f"Masking {np.sum(mask)} / {len(mask)} values")
     return mask
 
-def equivalent_width(norm_flux, restwave, integration_lims = (5885, 5905)):
+def equivalent_width(norm_flux, restwave, integration_lims = (5885, 5905), testrun = False):
 
     ## get the indices defining the Na D restwave region
     integration_inds = np.where((restwave >= integration_lims[0]) & (restwave <= integration_lims[1]))[0]
