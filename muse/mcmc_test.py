@@ -38,6 +38,7 @@ def arguments():
     parser.add_argument('bin_method', type=str, help="Input DAP spatial binning method (default: SQUARE0.6)", default="SQUARE0.6")
     parser.add_argument('-p', '--plot', help = "Plot figures for inspection (default: False)", action='store_true', default=False)
     parser.add_argument('-q','--quiet', help = "Suppress verbose outputs (default: False)", action='store_true', default = False)
+    return parser.parse_args()
 
 def print_results(bin_number, percentiles, velocity, equivw):
     print(f"_____RESULTS FOR BIN {bin_number}_____")
@@ -211,4 +212,5 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
 
 if __name__ == "__main__":
     sys_args = arguments()
+    print(f'Running MCMC test for {sys_args.galname} {sys_args.bin_method} BIN {sys_args.binID}')
     main(sys_args.galname, sys_args.bin_method, sys_args.binID, sys_args.plot, sys_args.quiet)
