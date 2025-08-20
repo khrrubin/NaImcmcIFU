@@ -172,7 +172,7 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
         return
     
     data = {'wave': np.ma.array(data = restwave_nai, mask = mask_nai), 'flux': np.ma.array(data = nflux_nai, mask = mask_nai), 
-            'err': np.ma.array(data = nerr_nai, mask = mask_nai), 'velres': np.ma.array(data = sres_NaI, mask = mask_nai)}
+            'err': np.ma.array(data = nerr_nai, mask = mask_nai), 'velres':sres_NaI}
 
     # Guess good model parameters
     lamred = 5897.5581
