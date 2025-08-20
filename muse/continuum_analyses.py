@@ -46,4 +46,7 @@ def equivalent_width(norm_flux, restwave, integration_lims = (5885, 5905), datam
 
     ew = EW if np.isfinite(EW) else -999
 
+    if testrun:
+        print(f"Equivalent Width = {ew:.3f} measured over {np.min(restwave_cut)} - {np.max(restwave_cut)}")
+
     return ew
