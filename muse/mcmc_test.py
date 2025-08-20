@@ -140,7 +140,7 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
 
     print("""Beginning fit for bin {0} """.format(binID))
     
-    emission_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim), datamask=infinite_mask, s=1 testrun=True)
+    emission_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim), datamask=infinite_mask, s=1, testrun=True)
     combined_mask = np.logical_or(infinite_mask, emission_mask)
     equiv_w = continuum_analyses.equivalent_width(nflux, restwave)
 
