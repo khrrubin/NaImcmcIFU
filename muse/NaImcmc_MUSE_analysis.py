@@ -67,6 +67,7 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec):
     plate = cfg.getint('plate', default = None)
     ifu = cfg.getint('ifu', default = None)
     redshift = cfg.getfloat('z', default = None)
+    
     if redshift is None:
         raise ValueError(f"No redshift found in {config_fil}")
 

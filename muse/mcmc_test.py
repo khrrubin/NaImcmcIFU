@@ -129,25 +129,19 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
     mod_bin = mod[:, y, x]
 
     bin_z = redshift + ((1 + redshift) * (binvel / c))
-    restwave = np.ma.array(obswave / (1.0 + bin_z))
+    restwave = obswave / (1.0 + bin_z)
 
-    nflux = np.ma.array(flux_bin / mod_bin)
-    nerr = np.ma.array(err_bin / mod_bin)
+    nflux = flux_bin / mod_bin
+    nerr = err_bin / mod_bin
 
     sres_NaI = LSFvel
 
     infinite_mask = ~np.isfinite(nflux) | ~np.isfinite(nerr)
-    nflux.mask = infinite_mask
-    nerr.mask = infinite_mask
-    restwave.mask = infinite_mask
 
     print("""Beginning fit for bin {0} """.format(binID))
     
-    emission_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim), fitlim, testrun=True)
-    nflux.mask += emission_mask
-    nerr.mask += emission_mask
-    restwave.mask += emission_mask
-
+    emission_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim), fitlim, datamask=infinite_mask, testrun=True)
+    combined_mask = np.logical_or(infinite_mask, emission_mask)
     equiv_w = continuum_analyses.equivalent_width(nflux, restwave)
 
     if equiv_w <= 0:
@@ -165,9 +159,10 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
     nflux_nai = nflux[select]
     nerr_nai = nerr[select]
     restwave_nai = restwave[select]
+    mask_nai = combined_mask[select]
 
     # check for bad data being masked
-    if np.sum(nflux_nai.mask) == len(nflux_nai):
+    if np.sum(mask_nai) == len(nflux_nai):
         bin_number = binid_map[ind][0]
         samples = np.zeros((100, 1100, 4))
         percentiles = np.zeros((4,3))
@@ -176,7 +171,8 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
         print_results(bin_number, samples, percentiles, bin_velocity)
         return
     
-    data = {'wave': restwave_nai, 'flux': nflux_nai, 'err': nerr_nai, 'velres': sres_NaI}
+    data = {'wave': np.ma.array(data = restwave_nai, mask = mask_nai), 'flux': np.ma.array(data = nflux_nai, mask = mask_nai), 
+            'err': np.ma.array(data = nerr_nai, mask = mask_nai), 'velres': np.ma.array(data = sres_NaI, mask = mask_nai)}
 
     # Guess good model parameters
     lamred = 5897.5581
