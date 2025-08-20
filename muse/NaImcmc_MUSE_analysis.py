@@ -334,29 +334,29 @@ def run_mcmc(galname, bin_key, beta_corr, redshift, LSFvel, binid_run, startbini
         binvel = ppxf_v_map[y, x]
 
         # single flux, error and model spectrum corresponding to that bin
-        flux_bin = np.ma.array(spec[:, y, x])
-        err_bin = np.ma.array(espec[:, y, x])
-        mod_bin = np.ma.array(mod[:, y, x])
-
-        zeromask = (err_bin == 0) | (mod_bin == 0) | ~np.isfinite(err_bin)
-        flux_bin.mask = zeromask
-        err_bin.mask = zeromask
-        mod_bin.mask = zeromask
+        flux_bin = spec[:, y, x]
+        err_bin = espec[:, y, x]
+        mod_bin = mod[:, y, x]
 
         # Determine bin redshift: cz in km/s = tstellar_kin[*,0]
         bin_z = redshift + ((1 + redshift) * (binvel / c))
         restwave = obswave / (1.0 + bin_z)
 
-        gas_ndata = continuum_normalize_NaI.smod_norm(restwave, flux_bin, err_bin, mod_bin, blim, rlim)
-        em_mask = continuum_analyses.emline_mask(gas_ndata['nflux'], gas_ndata['nwave'], tuple(blim), tuple(rlim))
-        for key in gas_ndata.keys():
-            gas_ndata[key].mask += em_mask
+        nflux = flux_bin / mod_bin
+        nerr = err_bin / mod_bin
 
-        equiv_w = continuum_analyses.equivalent_width(gas_ndata['nflux'], gas_ndata['nwave'])
+        sres_NaI = LSFvel
+
+        infinite_mask = (~np.isfinite(nflux)) | (~np.isfinite(nerr))
 
         print("""Beginning fit for bin {0} """.format(qq))
 
+        emission_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim), datamask=infinite_mask, s=1, testrun=True)
+        combined_mask = np.logical_or(infinite_mask, emission_mask)
+        equiv_w = continuum_analyses.equivalent_width(nflux, restwave, testrun=True)
+
         if equiv_w <= 0:
+            print(f"EQ_W returned {equiv_w}. Skipping fit")
             bin_number = binid_map[ind][0]
             samples = np.zeros((100, 1100, 4))
             percentiles = np.zeros((4,3))
@@ -365,23 +365,25 @@ def run_mcmc(galname, bin_key, beta_corr, redshift, LSFvel, binid_run, startbini
             continue
 
         # Cut out NaI
-        select = np.where((gas_ndata['nwave'] > fitlim[0]) & (gas_ndata['nwave'] < fitlim[1]))
-        restwave_NaI = gas_ndata['nwave'][select].astype('float64')
-        flux_NaI = gas_ndata['nflux'][select].astype('float64')
-        err_NaI = gas_ndata['nerr'][select].astype('float64')
-        sres_NaI = LSFvel
-
-        data = {'wave': restwave_NaI, 'flux': flux_NaI, 'err': err_NaI, 'velres': sres_NaI}
-
+        select = np.where((restwave > fitlim[0]) & (restwave < fitlim[1]))
+        nflux_nai = nflux[select]
+        nerr_nai = nerr[select]
+        restwave_nai = restwave[select]
+        mask_nai = combined_mask[select]
+        
         # check for bad data being masked
-        if (data['flux'].mask.all() == True) | (data['err'].mask.all() == True):
+        if np.sum(mask_nai) == len(nflux_nai):
+            print("All flux pixels masked. Skipping fit")
             bin_number = binid_map[ind][0]
             samples = np.zeros((100, 1100, 4))
             percentiles = np.zeros((4,3))
             bin_velocity = -999
             append_row_to_fits(outfile_path, bin_number, samples, percentiles, bin_velocity)
             continue
-
+        
+        data = {'wave': np.ma.array(data = restwave_nai, mask = mask_nai), 'flux': np.ma.array(data = nflux_nai, mask = mask_nai), 
+                'err': np.ma.array(data = nerr_nai, mask = mask_nai), 'velres':sres_NaI}
+        
         # Guess good model parameters
         lamred = 5897.5581
         logN = 14.5
@@ -397,7 +399,6 @@ def run_mcmc(galname, bin_key, beta_corr, redshift, LSFvel, binid_run, startbini
         lamred_mcmc, logN_mcmc, bD_mcmc, Cf_mcmc = datfit.theta_percentiles
         lamrest = 5897.5581
         velocity = ((lamred_mcmc[0] / lamrest) - 1) * c
-
 
         bin_number = binid_map[ind][0]
         samples = datfit.samples
