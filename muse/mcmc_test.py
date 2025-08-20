@@ -136,7 +136,7 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
 
     sres_NaI = LSFvel
 
-    infinite_mask = ~np.isfinite(nflux) | ~np.isfinite(nerr)
+    infinite_mask = (~np.isfinite(nflux)) | (~np.isfinite(nerr))
 
     print("""Beginning fit for bin {0} """.format(binID))
     

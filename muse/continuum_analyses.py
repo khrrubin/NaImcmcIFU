@@ -10,8 +10,8 @@ def emline_mask(flux, wave, cont_blim: tuple, cont_rlim: tuple, datamask = None,
     continuum_select = (wave > cont_blim[0]) & (wave < cont_blim[1]) | (wave > cont_rlim[0]) & (wave < cont_rlim[1])
     continuum = flux[continuum_select]
     continuum_mask = datamask[continuum_select]
-    median = np.median(continuum[continuum_mask])
-    standard_dev = np.std(continuum[continuum_mask])
+    median = np.median(continuum[~continuum_mask])
+    standard_dev = np.std(continuum[~continuum_mask])
 
     if testrun:
         print(f"Continuum level: {median:.3f}")
@@ -38,9 +38,9 @@ def equivalent_width(norm_flux, restwave, integration_lims = (5885, 5905), datam
     if len(normflux_cut) < 10:
         return -999
     
-    ones = np.ones(len(normflux_cut))
-    dLambda = np.gradient(restwave_cut)
-    EW = np.sum(  (( ones - normflux_cut ) * dLambda)  )
+    ones = np.ones(len(normflux_cut[~datamask]))
+    dLambda = np.gradient(restwave_cut[~datamask])
+    EW = np.sum(  (( ones - normflux_cut[~datamask] ) * dLambda)  )
 
     ew = EW if np.isfinite(EW) else -999
 
