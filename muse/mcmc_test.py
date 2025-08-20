@@ -150,7 +150,7 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
         percentiles = np.zeros((4,3))
         bin_velocity = -999
         print(f"ERROR: Equivalent width returned {equiv_w}")
-        print_results(bin_number, samples, percentiles, bin_velocity)
+        #print_results(bin_number, samples, percentiles, bin_velocity)
         return
 
 
@@ -168,7 +168,7 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
         percentiles = np.zeros((4,3))
         bin_velocity = -999
         print(f"ERROR: All flux pixels are masked")
-        print_results(bin_number, samples, percentiles, bin_velocity)
+        #print_results(bin_number, samples, percentiles, bin_velocity)
         return
     
     data = {'wave': np.ma.array(data = restwave_nai, mask = mask_nai), 'flux': np.ma.array(data = nflux_nai, mask = mask_nai), 
@@ -195,7 +195,7 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
     percentiles = datfit.theta_percentiles
     bin_velocity = velocity
 
-    print_results(bin_number, samples, percentiles, bin_velocity)
+    #print_results(bin_number, samples, percentiles, bin_velocity)
 
     if plot:
         import matplotlib.pyplot as plt
