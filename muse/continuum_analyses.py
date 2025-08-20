@@ -27,20 +27,22 @@ def equivalent_width(norm_flux, restwave, integration_lims = (5885, 5905), datam
     if datamask is None:
         datamask = np.zeros_like(norm_flux).astype(bool)
 
+    flux_masked = norm_flux[~datamask]
+    restwave_masked = restwave[~datamask]
+
     ## get the indices defining the Na D restwave region
-    integration_select = (restwave > integration_lims[0]) & (restwave < integration_lims[1])
+    integration_select = (restwave_masked > integration_lims[0]) & (restwave_masked < integration_lims[1])
 
     ## extract Na D values
-    normflux_cut = norm_flux[integration_select]
-    restwave_cut = restwave[integration_select]
-    datamask_cut = datamask[integration_select]
+    normflux_cut = flux_masked[integration_select]
+    restwave_cut = restwave_masked[integration_select]
 
     if len(normflux_cut) < 10:
         return -999
     
-    ones = np.ones(len(normflux_cut[~datamask]))
-    dLambda = np.gradient(restwave_cut[~datamask])
-    EW = np.sum(  (( ones - normflux_cut[~datamask] ) * dLambda)  )
+    ones = np.ones(len(normflux_cut))
+    dLambda = np.gradient(restwave_cut)
+    EW = np.sum(  (( ones - normflux_cut ) * dLambda)  )
 
     ew = EW if np.isfinite(EW) else -999
 
