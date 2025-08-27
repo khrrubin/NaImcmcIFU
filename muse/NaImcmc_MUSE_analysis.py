@@ -353,7 +353,7 @@ def run_mcmc(galname, bin_key, beta_corr, redshift, LSFvel, binid_run, startbini
 
         emission_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim), datamask=infinite_mask, s=1, testrun=True)
         combined_mask = np.logical_or(infinite_mask, emission_mask)
-        equiv_w = continuum_analyses.equivalent_width(nflux, restwave, testrun=True)
+        equiv_w = continuum_analyses.equivalent_width(nflux, restwave, datamask=combined_mask, testrun=True)
 
         if equiv_w <= 0:
             print(f"EQ_W returned {equiv_w}. Skipping fit")
