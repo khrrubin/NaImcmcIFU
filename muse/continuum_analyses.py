@@ -1,7 +1,7 @@
 import numpy as np
 
-def emline_mask(flux, wave, cont_blim: tuple, cont_rlim: tuple, datamask = None, s = 1, testrun = False):
-    if testrun:
+def emline_mask(flux, wave, cont_blim: tuple, cont_rlim: tuple, datamask = None, s = 1, verbose = False):
+    if verbose:
         print("Masking emission lines")
 
     if datamask is None:
@@ -13,17 +13,17 @@ def emline_mask(flux, wave, cont_blim: tuple, cont_rlim: tuple, datamask = None,
     median = np.median(continuum[~continuum_mask])
     standard_dev = np.std(continuum[~continuum_mask])
 
-    if testrun:
+    if verbose:
         print(f"Continuum level: {median:.3f}")
 
     mask = flux > median + s * standard_dev
 
-    if testrun:
+    if verbose:
         print(f"Masking {np.sum(mask)} / {len(mask)} values")
 
     return mask
 
-def equivalent_width(norm_flux, restwave, integration_lims = (5885, 5905), datamask = None, testrun = False):
+def equivalent_width(norm_flux, restwave, integration_lims = (5885, 5905), datamask = None, verbose = False):
     if datamask is None:
         datamask = np.zeros_like(norm_flux).astype(bool)
 
@@ -46,7 +46,7 @@ def equivalent_width(norm_flux, restwave, integration_lims = (5885, 5905), datam
 
     ew = EW if np.isfinite(EW) else -999
 
-    if testrun:
+    if verbose:
         print(f"Equivalent Width = {ew:.3f} measured over {np.min(restwave_cut)} - {np.max(restwave_cut)}")
 
     return ew

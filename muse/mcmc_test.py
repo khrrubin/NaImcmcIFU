@@ -6,6 +6,7 @@ import model_NaI
 import model_fitter
 import continuum_normalize_NaI
 import continuum_analyses
+import snr
 from linetools.spectra.xspectrum1d import XSpectrum1D
 from mangadap.config import defaults
 from mangadap.util.parser import DefaultConfig
@@ -106,17 +107,16 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
     maps_file_path = os.path.join(output_cube_dir,
                                   f"manga-{plate}-{ifu}-MAPS-{bin_key}-{analysisplan_methods}.fits")
 
+    with fits.open(maps_file_path) as hdu_map:
+        binid_map = hdu_map['BINID'].data[0]
+        ppxf_v_map = hdu_map['STELLAR_VEL'].data
 
-    hdu_map = fits.open(maps_file_path)
-    binid_map = hdu_map['BINID'].data[0]
-    ppxf_v_map = hdu_map['STELLAR_VEL'].data
-
-    hdu_cube = fits.open(cube_file_path)
-    spec = hdu_cube['FLUX'].data
-    ivar = hdu_cube['IVAR'].data
-    espec = np.sqrt(1 / ivar)
-    mod = hdu_cube['MODEL'].data
-    obswave = hdu_cube['WAVE'].data
+    with fits.open(cube_file_path) as hdu_cube:
+        spec = hdu_cube['FLUX'].data
+        ivar = hdu_cube['IVAR'].data
+        espec = np.sqrt(1 / ivar)
+        mod = hdu_cube['MODEL'].data
+        obswave = hdu_cube['WAVE'].data
 
 
     ind = binid_map == binID
@@ -139,10 +139,18 @@ def main(galname, bin_key, binID, plot = False, quiet = False):
     infinite_mask = (~np.isfinite(nflux)) | (~np.isfinite(nerr))
 
     print("""Beginning fit for bin {0} """.format(binID))
+    sig2n = snr.nai_snr(restwave, flux_bin, err_bin)
+    if sig2n < 30:
+        print(f"S/N returned {sig2n}. Skipping fit")
+        bin_number = binid_map[ind][0]
+        samples = np.zeros((100, 1100, 4))
+        percentiles = np.zeros((4,3))
+        bin_velocity = -999
+        return 
     
-    emission_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim), datamask=infinite_mask, s=1, testrun=True)
+    emission_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim), datamask=infinite_mask, s=1, verbose=True)
     combined_mask = np.logical_or(infinite_mask, emission_mask)
-    equiv_w = continuum_analyses.equivalent_width(nflux, restwave, datamask=combined_mask, testrun=True)
+    equiv_w = continuum_analyses.equivalent_width(nflux, restwave, datamask=combined_mask, verbose=True)
 
     if equiv_w <= 0:
         bin_number = binid_map[ind][0]
