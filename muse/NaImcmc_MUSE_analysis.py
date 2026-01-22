@@ -10,6 +10,7 @@ import model_NaI
 import model_fitter
 import continuum_normalize_NaI
 import continuum_analyses
+import snr
 import time
 from mangadap.config import defaults
 from mangadap.util.parser import DefaultConfig
@@ -200,10 +201,14 @@ def setup_script(galname, bin_key, beta_corr, binsperrun, scripts_per_exec):
             f.write("#!/bin/sh\n")
             for line in chunk:
                 f.write(line + '\n')
+            f.write("wait\n")
         print(f'Wrote {chunk_filename}')
     # Set up script that lists
     # input root, redshift, LSFvel, startbinid, endbinid
 
+def write_bin_status(filename, message):
+    with open(filename, 'a') as f:
+        f.write(f"{message}\n")
 
 def append_row_to_fits(filepath, bin_number, samples, percentiles, velocity):
     row_data = Table()
@@ -223,6 +228,11 @@ def append_row_to_fits(filepath, bin_number, samples, percentiles, velocity):
 
 def run_mcmc(galname, bin_key, beta_corr, redshift, LSFvel, binid_run, startbinid, endbinid):
     start_time1 = time.time()
+
+    repo_dir = os.path.dirname(os.path.abspath(__file__))
+    log_dir = os.path.join(repo_dir, 'script_logs')
+    gal_log_dir = os.path.join(log_dir, f"{galname}-{bin_key}")
+    logfile = f'{galname}-{bin_key}-binid-{startbinid}-{endbinid}-samples-run-{binid_run}.txt'
 
     # data root directory
     data_root_dir = get_data_path()
@@ -351,11 +361,24 @@ def run_mcmc(galname, bin_key, beta_corr, redshift, LSFvel, binid_run, startbini
 
         print("""Beginning fit for bin {0} """.format(qq))
 
-        emission_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim), datamask=infinite_mask, s=1, testrun=True)
+        sig2n = snr.nai_snr(restwave, flux_bin, err_bin)
+        if sig2n < 30:
+            write_bin_status(logfile, f"BIN {qq}: S/N returned {sig2n}. Skipping fit")
+            print(f"S/N returned {sig2n}. Skipping fit")
+            bin_number = binid_map[ind][0]
+            samples = np.zeros((100, 1100, 4))
+            percentiles = np.zeros((4,3))
+            bin_velocity = -999
+            append_row_to_fits(outfile_path, bin_number, samples, percentiles, bin_velocity)
+            continue
+
+        emission_mask = continuum_analyses.emline_mask(nflux, restwave, tuple(blim), tuple(rlim), datamask=infinite_mask, s=1, verbose=True)
         combined_mask = np.logical_or(infinite_mask, emission_mask)
-        equiv_w = continuum_analyses.equivalent_width(nflux, restwave, datamask=combined_mask, testrun=True)
+
+        equiv_w = continuum_analyses.equivalent_width(nflux, restwave, datamask=combined_mask, verbose=True)
 
         if equiv_w <= 0:
+            write_bin_status(logfile, f"BIN {qq}: EQ_W returned {equiv_w}. Skipping fit")
             print(f"EQ_W returned {equiv_w}. Skipping fit")
             bin_number = binid_map[ind][0]
             samples = np.zeros((100, 1100, 4))
@@ -373,6 +396,7 @@ def run_mcmc(galname, bin_key, beta_corr, redshift, LSFvel, binid_run, startbini
         
         # check for bad data being masked
         if np.sum(mask_nai) == len(nflux_nai):
+            write_bin_status(logfile, f"BIN {qq}: All flux pixels masked. Skipping fit")
             print("All flux pixels masked. Skipping fit")
             bin_number = binid_map[ind][0]
             samples = np.zeros((100, 1100, 4))
@@ -406,6 +430,7 @@ def run_mcmc(galname, bin_key, beta_corr, redshift, LSFvel, binid_run, startbini
         bin_velocity = velocity
 
         append_row_to_fits(outfile_path, bin_number, samples, percentiles, bin_velocity)
+        write_bin_status(logfile, f"BIN {qq}: Fit Results | lam = {lamred_mcmc}, logN = {logN_mcmc}, bD = {bD_mcmc}, Cf = {Cf_mcmc}, EW = {equiv_w}, S/N = {sig2n}")
         end_time2 = time.time()
         print('Time elapsed for this bin {:.2f} minutes'.format((end_time2 - start_time2) / 60))
 
